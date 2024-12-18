@@ -14,7 +14,7 @@ namespace GameUI
 
         public virtual void OnInitUI()
         {
-            Debug.LogError($"OnInit  {UIName}");
+            
         }
 
         public virtual void OnOpenUI()

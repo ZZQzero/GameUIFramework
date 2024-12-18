@@ -69,6 +69,11 @@ namespace GameUI
             _uiRoot = root.GetComponent<GameUIRoot>();
         }
     
+        public void SetPackage(ResourcePackage package)
+        {
+            _package = package;
+        }
+        
         public async UniTask<GameUIBase> OpenUI(string uiName,object data)
         {
             if(_uiRoot == null)
@@ -103,17 +108,12 @@ namespace GameUI
                 _allCloseGameUIDic.Remove(uiName);
                 _loadingUIDic.Remove(uiName);
                 SetUIMode(uiBase);
-                Debug.LogError($"打开已关闭的UI {uiName}");
                 return uiBase;
             }
 
             if(_allOpenGameUIDic.TryGetValue(uiName, out uiBase))
             {
-                Debug.LogError("重复打开UI");
-                if (_loadingUIDic.Remove(uiName))
-                {
-                    Debug.LogError("移除loadingUI");
-                }
+                _loadingUIDic.Remove(uiName);
                 return uiBase;
             }
             
@@ -127,7 +127,6 @@ namespace GameUI
                 uiBase = panel.GetComponent<GameUIBase>();
                 if (uiBase != null)
                 {
-                    Debug.LogError($"新建ui {uiName}");
                     uiBase.Data = data;
                     uiBase.UIName = uiName;
                     uiBase.OnInitUI();
@@ -145,26 +144,11 @@ namespace GameUI
         {
             if (_allOpenGameUIDic.TryGetValue(uiName, out var uiBase))
             {
-                if (uiBase.GameUIMode == EGameUIMode.ReverseChange)
-                {
-                    if (_openUIStack.Count > 0)
-                    {
-                        Debug.LogError($"栈长度 {_openUIStack.Count}");
-                        _finallyOpenUIName = null;
-                        var prev = _openUIStack.Pop();
-                        if (prev != null)
-                        {
-                            Debug.LogError($"从栈中打开 {prev.UIName}");
-                            OpenUI(prev.UIName, prev.Data).Forget();
-                        }
-                    }
-                }
-            
+                ReverseStackPop(uiBase.GameUIMode);
                 uiBase.OnCloseUI();
                 uiBase.transform.SetAsFirstSibling();
                 uiBase.gameObject.SetActive(false);
                 _allCloseGameUIDic.TryAdd(uiName, uiBase);
-                Debug.LogError($"关闭UI {uiName}");
                 _allOpenGameUIDic.Remove(uiName);
             }
 
@@ -199,21 +183,7 @@ namespace GameUI
         {
             if (_allOpenGameUIDic.TryGetValue(uiName, out var uiBase))
             {
-                if (uiBase.GameUIMode == EGameUIMode.ReverseChange)
-                {
-                    if (_openUIStack.Count > 0)
-                    {
-                        Debug.LogError($"栈长度 {_openUIStack.Count}");
-                        _finallyOpenUIName = null;
-                        var prev = _openUIStack.Pop();
-                        if (prev != null)
-                        {
-                            Debug.LogError($"从栈中打开 {prev.UIName}");
-                            OpenUI(prev.UIName, prev.Data).Forget();
-                        }
-                    }
-                }
-                
+                ReverseStackPop(uiBase.GameUIMode);
                 uiBase.OnDestroyUI();
                 Object.Destroy(uiBase.gameObject);
                 _allOpenGameUIDic.Remove(uiName);
@@ -221,7 +191,6 @@ namespace GameUI
                 {
                     _finallyOpenUIName = null;
                 }
-                Debug.LogError($"删除UI: {uiName} , {_finallyOpenUIName}");
             }
         }
         
@@ -246,17 +215,17 @@ namespace GameUI
             _uiLayerDic.TryAdd(layer, transform);
         }
         
-        public Transform GetUILayer(int layer)
+        public Transform GetUILayer(EGameUILayer layer)
         {
-            return _uiLayerDic.GetValueOrDefault(layer);
+            return _uiLayerDic.GetValueOrDefault((int)layer);
         }
         
         private void SetUILayer(GameUIBase uiBase)
         {
-            var layer = uiBase.GameUILayer;
-            if (_uiLayerDic.TryGetValue((int)layer, out var transform))
+            var layer = GetUILayer(uiBase.GameUILayer);
+            if (layer != null)
             {
-                uiBase.transform.SetParent(transform);
+                uiBase.transform.SetParent(layer, false);
                 uiBase.transform.localPosition = Vector3.zero;
                 uiBase.transform.localScale = Vector3.one;
             }
@@ -276,31 +245,46 @@ namespace GameUI
                     CloseAllUI();
                     break;
                 case EGameUIMode.ReverseChange:
-                    
-                    if (!string.IsNullOrEmpty(_finallyOpenUIName))
-                    {
-                        Debug.LogError($"最后打开的UI {_finallyOpenUIName}");
-                        if (_allOpenGameUIDic.TryGetValue(_finallyOpenUIName, out var finallyUiBase))
-                        {
-                            finallyUiBase.OnCloseUI();
-                            finallyUiBase.transform.SetAsFirstSibling();
-                            finallyUiBase.gameObject.SetActive(false);
-                            _allCloseGameUIDic.TryAdd(_finallyOpenUIName, finallyUiBase);
-                            Debug.LogError($"关闭并入栈的UI ,{_finallyOpenUIName}");
-                            _allOpenGameUIDic.Remove(_finallyOpenUIName);
-                            _openUIStack.Push(finallyUiBase);
-                        }
-                    }
-                    /*_openUIStack.Push(uiBase);
-                    Debug.LogError($"入栈的UI {uiBase.UIName}");*/
+                    ReverseStackPush();
                     break;
             }
-
-            Debug.LogError($"@栈长度 {_openUIStack.Count} {uiBase.UIName}");
+            
             _finallyOpenUIName = uiBase.UIName;
             if(!_allOpenGameUIDic.TryAdd(uiBase.UIName, uiBase))
             {
                 Debug.LogError($"repeatedly open ui in a frame time: {uiBase.UIName}");
+            }
+        }
+
+        private void ReverseStackPush()
+        {
+            if (!string.IsNullOrEmpty(_finallyOpenUIName))
+            {
+                if (_allOpenGameUIDic.TryGetValue(_finallyOpenUIName, out var finallyUiBase))
+                {
+                    finallyUiBase.OnCloseUI();
+                    finallyUiBase.transform.SetAsFirstSibling();
+                    finallyUiBase.gameObject.SetActive(false);
+                    _allCloseGameUIDic.TryAdd(_finallyOpenUIName, finallyUiBase);
+                    _allOpenGameUIDic.Remove(_finallyOpenUIName);
+                    _openUIStack.Push(finallyUiBase);
+                }
+            }
+        }
+        
+        private void ReverseStackPop(EGameUIMode mode)
+        {
+            if (mode == EGameUIMode.ReverseChange)
+            {
+                if (_openUIStack.Count > 0)
+                {
+                    _finallyOpenUIName = null;
+                    var prev = _openUIStack.Pop();
+                    if (prev != null)
+                    {
+                        OpenUI(prev.UIName, prev.Data).Forget();
+                    }
+                }
             }
         }
     }
