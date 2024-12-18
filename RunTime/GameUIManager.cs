@@ -50,6 +50,7 @@ namespace GameUI
         private Dictionary<int,Transform> _uiLayerDic = new();
         private Dictionary<string, GameUIBase> _allOpenGameUIDic = new();
         private Dictionary<string,GameUIBase> _allCloseGameUIDic = new();
+        private Dictionary<string,AssetHandle> _allAssetHandleDic = new();
         private Dictionary<string,string> _loadingUIDic = new();//正在加载中的UI
         private Stack<GameUIBase> _openUIStack = new Stack<GameUIBase>();
         private List<string> _notCloseUIFilterList = new(5)
@@ -121,6 +122,7 @@ namespace GameUI
             {
                 var handle = _package.LoadAssetAsync(uiName);
                 await handle;
+                _allAssetHandleDic.TryAdd(uiName, handle);
                 var panel = handle.InstantiateSync();
                 panel.name = uiName;
                 panel.SetActive(true);
@@ -186,6 +188,7 @@ namespace GameUI
                 ReverseStackPop(uiBase.GameUIMode);
                 uiBase.OnDestroyUI();
                 Object.Destroy(uiBase.gameObject);
+                ReleaseHandle(uiName);
                 _allOpenGameUIDic.Remove(uiName);
                 if (uiName == _finallyOpenUIName)
                 {
@@ -209,7 +212,7 @@ namespace GameUI
             hideList.Clear();
             _finallyOpenUIName = null;
         }
-
+        
         public void AddUILayer(int layer,Transform transform)
         {
             _uiLayerDic.TryAdd(layer, transform);
@@ -285,6 +288,19 @@ namespace GameUI
                         OpenUI(prev.UIName, prev.Data).Forget();
                     }
                 }
+            }
+        }
+        
+        /// <summary>
+        /// 资源句柄释放，释放之后如果调用了卸载资源，那么这个资源就不能使用了
+        /// </summary>
+        /// <param name="uiName"></param>
+        private void ReleaseHandle(string uiName)
+        {
+            if (_allAssetHandleDic.TryGetValue(uiName, out var handle))
+            {
+                handle.Release();
+                _allAssetHandleDic.Remove(uiName);
             }
         }
     }

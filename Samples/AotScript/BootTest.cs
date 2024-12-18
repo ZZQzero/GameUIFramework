@@ -34,9 +34,7 @@ public class BootTest : MonoBehaviour
         GameUIManager.Instance.Init();
         var aotPackage = await LoadLocalPackage();
         GameUIManager.Instance.SetPackage(aotPackage);
-        await GameUIManager.Instance.OpenUI("PatchPanel", null);
-        
-        
+        //await GameUIManager.Instance.OpenUI(GameUIName.PatchPanel, null);
     }
     
     private async UniTask<ResourcePackage> LoadLocalPackage()
@@ -80,5 +78,35 @@ public class BootTest : MonoBehaviour
         }
 
         return aotPackage;
+    }
+
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.A))
+        {
+            GameUIManager.Instance.CloseUI("PatchPanel");
+        }
+        
+        if (Input.GetKeyDown(KeyCode.B))
+        {
+            GameUIManager.Instance.OpenUI("PatchPanel", null).Forget();
+        }
+        
+        if (Input.GetKeyDown(KeyCode.C))
+        {
+            GameUIManager.Instance.CloseAndDestroyUI("PatchPanel");
+        }
+        
+        if (Input.GetKeyDown(KeyCode.D))
+        {
+            StartCoroutine(UnloadUnusedAssets());
+        }
+    }
+    
+    private IEnumerator UnloadUnusedAssets()
+    {
+        var package = YooAssets.GetPackage("AotPackage");
+        var operation = package.UnloadUnusedAssetsAsync();
+        yield return operation;
     }
 }

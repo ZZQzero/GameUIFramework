@@ -95,6 +95,9 @@ namespace GameUI.Editor
             EditorGUILayout.Space(10);
             EditorGUILayout.LabelField("代码生成路径2：", _createFile.PanelCodeGeneratePath, _fileStyle);
             EditorGUILayout.LabelField("脚本名字2：", _createFile.PanelFileName, _fileStyle);
+            EditorGUILayout.Space(10);
+            EditorGUILayout.LabelField("代码生成路径3：", _createFile.PanelNameCodeGeneratePath, _fileStyle);
+            EditorGUILayout.LabelField("脚本名字3：", _createFile.PanelNameFileName, _fileStyle);
 
             _warningStyle.normal.textColor = Color.yellow;
             anewFile = EditorGUILayout.ToggleLeft("重新生成！（清空原有的代码，慎用！）", anewFile, _warningStyle);
