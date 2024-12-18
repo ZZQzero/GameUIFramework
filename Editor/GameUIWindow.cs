@@ -153,8 +153,7 @@ namespace GameUI.Editor
                         component.PropertyName = EditorGUILayout.TextField(component.PropertyName);
 
                         EditorGUILayout.Space(5);
-                        component.IsSelect =
-                            EditorGUILayout.Toggle(component.SelectIndex.ToString(), component.IsSelect);
+                        component.IsSelect = EditorGUILayout.Toggle(component.SelectIndex.ToString(), component.IsSelect);
                         GUILayout.EndHorizontal(); //5
                     }
 

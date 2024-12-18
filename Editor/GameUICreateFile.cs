@@ -136,18 +136,15 @@ namespace GameUI.Editor
             {
                 var tempStr = File.ReadAllText(path2);
                 int startIndex = tempStr.IndexOf("//end", StringComparison.OrdinalIgnoreCase);
-                int endIndex = tempStr.IndexOf("//end", StringComparison.OrdinalIgnoreCase);
                 
-                startIndex -= "//end".Length;
-
-                if (startIndex == -1 || endIndex == -1 || startIndex >= endIndex)
+                if (startIndex < 0)
                 {
                     throw new InvalidOperationException("Invalid start or end markers in the target file.");
                 }
                 string before = tempStr.Substring(0, startIndex);
-                string after = tempStr.Substring(endIndex);
+                string after = tempStr.Substring(startIndex);
                 string contentToInsert = WriteUINameLine(UIName,uiRoot.name);
-                string newContent = before + Environment.NewLine + contentToInsert + Environment.NewLine + tab + tab + after;
+                string newContent = before + contentToInsert + tab + tab + after;
 
                 File.WriteAllText(path2, newContent);
             }
@@ -177,6 +174,11 @@ namespace GameUI.Editor
                         var components = child.GetComponents<Component>();
                         for (int j = 0; j < components.Length; j++)
                         {
+                            if(components[j] == null)
+                            {
+                                Debug.LogError($"存在丢失引用的脚本！-->{child.name}");
+                                continue;
+                            }
                             if (FilterComponentDic.ContainsKey(components[j].GetType().ToString()))
                             {
                                 continue;
@@ -221,7 +223,7 @@ namespace GameUI.Editor
                 {
                     if(components[j] == null)
                     {
-                        Debug.LogError("存在丢失引用的脚本！");
+                        Debug.LogError($"存在丢失引用的脚本！-->{parent.name}");
                         continue;
                     }
                     if (FilterComponentDic.ContainsKey(components[j].GetType().ToString()))
@@ -313,13 +315,11 @@ namespace GameUI.Editor
                     {
                         if (item.Item.parent == null)
                         {
-                            stringBuilder.AppendLine(tab + tab + tab + component.PropertyName +
-                                                     $" = GetComponent<{component.Component.GetType()}>();");
+                            stringBuilder.AppendLine(tab + tab + tab + component.PropertyName + $" = GetComponent<{component.Component.GetType()}>();");
                         }
                         else
                         {
-                            stringBuilder.AppendLine(tab + tab + tab + component.PropertyName +
-                                                     $" = transform.Find({'"'}{component.ComponentPath}{'"'}).GetComponent<{component.Component.GetType()}>();");
+                            stringBuilder.AppendLine(tab + tab + tab + component.PropertyName + $" = transform.Find({'"'}{component.ComponentPath}{'"'}).GetComponent<{component.Component.GetType()}>();");
                         }
                     }
                     else
@@ -328,13 +328,11 @@ namespace GameUI.Editor
                         var curComponent = curItem.ComponentList.Find(x => x.IsSelect == true);
                         if (curComponent != null)
                         {
-                            stringBuilder.AppendLine(tab + tab + tab + component.PropertyName +
-                                                     $" = {curComponent.PropertyName}.transform.Find({'"'}{component.ComponentPath}{'"'}).GetComponent<{component.Component.GetType()}>();");
+                            stringBuilder.AppendLine(tab + tab + tab + component.PropertyName + $" = {curComponent.PropertyName}.transform.Find({'"'}{component.ComponentPath}{'"'}).GetComponent<{component.Component.GetType()}>();");
                         }
                         else
                         {
-                            stringBuilder.AppendLine(tab + tab + tab + component.PropertyName +
-                                                     $" = transform.Find({'"'}{component.ComponentRootPath}{'"'}).GetComponent<{component.Component.GetType()}>();");
+                            stringBuilder.AppendLine(tab + tab + tab + component.PropertyName + $" = transform.Find({'"'}{component.ComponentRootPath}{'"'}).GetComponent<{component.Component.GetType()}>();");
                         }
                     }
                 }
@@ -390,7 +388,7 @@ namespace GameUI.Editor
             stringBuilder.Append("{" + enter);
             stringBuilder.Append(tab + "public static class " + StaticName + enter);
             stringBuilder.Append(tab + "{" + enter);
-            stringBuilder.Append(WriteUINameLine(UIName,className));
+            stringBuilder.Append(tab + tab + WriteUINameLine(UIName,className));
             stringBuilder.AppendLine(tab + tab + "//end");
 
             stringBuilder.Append(tab + "}" + enter);
@@ -402,7 +400,7 @@ namespace GameUI.Editor
         public string WriteUINameLine(string propertyName, string prefabName)
         {
             StringBuilder stringBuilder = new StringBuilder();
-            stringBuilder.AppendLine(tab + tab + "public const string " + propertyName + " = " + '"' + prefabName + '"' + ";");
+            stringBuilder.AppendLine("public const string " + propertyName + " = " + '"' + prefabName + '"' + ";");
             return stringBuilder.ToString();
         }
 

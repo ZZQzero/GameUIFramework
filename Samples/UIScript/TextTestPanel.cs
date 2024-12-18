@@ -3,7 +3,7 @@ using UnityEngine.UI;
 
 namespace GameUI
 {
-	public partial class APanel : GameUIBase
+	public partial class TextTestPanel : GameUIBase
 	{
 		public override void OnInitUI()
 		{
