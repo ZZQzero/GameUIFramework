@@ -73,6 +73,13 @@ public class GameUIWindow : EditorWindow
             }
             return;
         }
+        
+        ShowItem();
+        ShowBtn();
+    }
+
+    private void ShowItem()
+    {
         _createFile.Init(_selectObj.transform);
         _fileStyle.normal.textColor = Color.green;
         GUILayout.BeginVertical();
@@ -153,8 +160,10 @@ public class GameUIWindow : EditorWindow
         GUILayout.EndScrollView();//2
 
         GUILayout.EndHorizontal();//1
+    }
 
-        
+    private void ShowBtn()
+    {
         GUILayout.BeginHorizontal();//1
         if (GUILayout.Button("刷新"))
         {
