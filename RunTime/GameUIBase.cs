@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace GameUI
 {
-    public abstract class GameUIBase : MonoBehaviour,IGameUI
+    public abstract class GameUIBase: MonoBehaviour,IGameUI
     {
         public EGameUILayer GameUILayer = EGameUILayer.Normal;
         public EGameUIMode GameUIMode = EGameUIMode.Normal;

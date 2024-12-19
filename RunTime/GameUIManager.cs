@@ -74,19 +74,25 @@ namespace GameUI
         {
             _package = package;
         }
-        
-        public async UniTask<GameUIBase> OpenUI(string uiName,object data)
+          
+        /// <summary>
+        /// 打开UI,没有数据时可以这么用GameUIManager.Instance.OpenUI<GameUIBase<object>>("name", null);
+        /// </summary>
+        /// <param name="uiName"></param>
+        /// <param name="data"></param>
+        /// <typeparam name="T"></typeparam>
+        public void OpenUI(string uiName,object data)
         {
             if(_uiRoot == null)
             {
                 Debug.LogError("GameUIRoot is null");
-                return null;
+                return;
             }
 
             if (string.IsNullOrEmpty(uiName))
             {
                 Debug.LogError("uiName is null");
-                return null;
+                return;
             }
             
             if (_package == null)
@@ -97,49 +103,30 @@ namespace GameUI
             if(!_loadingUIDic.TryAdd(uiName, uiName))
             {
                 Debug.LogError($"{uiName} is loading...");
-                return null;
+                return;
             }
 
             GameUIBase uiBase = null;
             if (_allCloseGameUIDic.TryGetValue(uiName, out uiBase))
             {
-                uiBase.OnOpenUI();
-                uiBase.gameObject.SetActive(true);
-                uiBase.transform.SetAsLastSibling();
-                _allCloseGameUIDic.Remove(uiName);
-                _loadingUIDic.Remove(uiName);
-                SetUIMode(uiBase);
-                return uiBase;
+                if (uiBase != null)
+                {
+                    uiBase.OnOpenUI();
+                    uiBase.gameObject.SetActive(true);
+                    uiBase.transform.SetAsLastSibling();
+                    _allCloseGameUIDic.Remove(uiName);
+                    _loadingUIDic.Remove(uiName);
+                    SetUIMode(uiBase);
+                }
+                return;
             }
 
             if(_allOpenGameUIDic.TryGetValue(uiName, out uiBase))
             {
                 _loadingUIDic.Remove(uiName);
-                return uiBase;
+                return;
             }
-            
-            if (_package != null)
-            {
-                var handle = _package.LoadAssetAsync(uiName);
-                await handle;
-                _allAssetHandleDic.TryAdd(uiName, handle);
-                var panel = handle.InstantiateSync();
-                panel.name = uiName;
-                panel.SetActive(true);
-                uiBase = panel.GetComponent<GameUIBase>();
-                if (uiBase != null)
-                {
-                    uiBase.Data = data;
-                    uiBase.UIName = uiName;
-                    uiBase.OnInitUI();
-                    uiBase.OnOpenUI();
-                    SetUILayer(uiBase);
-                    SetUIMode(uiBase);
-                }
-                panel.transform.SetAsLastSibling();
-                _loadingUIDic.Remove(uiName);
-            }
-            return uiBase;
+            LoadUI(uiName, data).Forget();
         }
         
         public void CloseUI(string uiName)
@@ -222,7 +209,38 @@ namespace GameUI
         {
             return _uiLayerDic.GetValueOrDefault((int)layer);
         }
-        
+
+        private async UniTask LoadUI(string uiName,object data)
+        {
+            if (_package != null)
+            {
+                var handle = _package.LoadAssetAsync(uiName);
+                await handle;
+                _allAssetHandleDic.TryAdd(uiName, handle);
+                var panel = handle.InstantiateSync();
+                if (panel != null)
+                {
+                    panel.name = uiName;
+                    panel.SetActive(true);
+                    var uiBase = panel.GetComponent<GameUIBase>();
+                    if (uiBase != null)
+                    {
+                        uiBase.Data = data;
+                        uiBase.UIName = uiName;
+                        uiBase.OnInitUI();
+                        SetUILayer(uiBase);
+                        SetUIMode(uiBase);
+                        uiBase.OnOpenUI();
+                    }
+                    panel.transform.SetAsLastSibling();
+                    _loadingUIDic.Remove(uiName);
+                }
+                else
+                {
+                    Debug.LogError($"panel is null: {uiName}");
+                }
+            }
+        }
         private void SetUILayer(GameUIBase uiBase)
         {
             var layer = GetUILayer(uiBase.GameUILayer);
@@ -285,7 +303,7 @@ namespace GameUI
                     var prev = _openUIStack.Pop();
                     if (prev != null)
                     {
-                        OpenUI(prev.UIName, prev.Data).Forget();
+                        OpenUI(prev.UIName, prev.Data);
                     }
                 }
             }
