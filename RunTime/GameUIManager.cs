@@ -81,7 +81,7 @@ namespace GameUI
         /// <param name="uiName"></param>
         /// <param name="data"></param>
         /// <typeparam name="T"></typeparam>
-        public void OpenUI(string uiName,object data)
+        public async UniTask OpenUI(string uiName,object data)
         {
             if(_uiRoot == null)
             {
@@ -126,7 +126,7 @@ namespace GameUI
                 _loadingUIDic.Remove(uiName);
                 return;
             }
-            LoadUI(uiName, data).Forget();
+            await LoadUI(uiName, data);
         }
         
         public void CloseUI(string uiName)
@@ -303,7 +303,7 @@ namespace GameUI
                     var prev = _openUIStack.Pop();
                     if (prev != null)
                     {
-                        OpenUI(prev.UIName, prev.Data);
+                        OpenUI(prev.UIName, prev.Data).Forget();
                     }
                 }
             }

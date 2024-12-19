@@ -44,7 +44,7 @@ namespace GameUI
 			{
 				OnCreateDownLoad(_package);
 			};
-			GameUIManager.Instance.OpenUI(GameUIName.MessageBoxPanel, messageBoxData);
+			GameUIManager.Instance.OpenUI(GameUIName.MessageBoxPanel, messageBoxData).Forget();
 		}
 
 		private void OnCreateDownLoad(ResourcePackage package)
@@ -77,7 +77,7 @@ namespace GameUI
 					}
 				};
 			        
-				GameUIManager.Instance.OpenUI(GameUIName.MessageBoxPanel, messageBoxData);
+				GameUIManager.Instance.OpenUI(GameUIName.MessageBoxPanel, messageBoxData).Forget();
 			}
 		}
 		
@@ -89,7 +89,7 @@ namespace GameUI
 		private void ChangeScene()
 		{
 			YooAssets.LoadSceneAsync("scene_home");
-			GameUIManager.Instance.OpenUI(GameUIName.UIHome,null);
+			GameUIManager.Instance.OpenUI(GameUIName.UIHome,null).Forget();
 			CloseSelf();
 		}
 
