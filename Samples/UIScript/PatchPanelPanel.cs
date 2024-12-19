@@ -1,3 +1,4 @@
+using System;
 using Cysharp.Threading.Tasks;
 using Unity.VisualScripting;
 using UnityEngine;
@@ -101,6 +102,5 @@ namespace GameUI
 		{
 			base.OnDestroyUI();
 		}
-		
 	}
 }

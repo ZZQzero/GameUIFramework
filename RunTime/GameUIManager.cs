@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using GameUI;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 using YooAsset;
 using Object = UnityEngine.Object;
 
@@ -73,6 +74,15 @@ namespace GameUI
         public void SetPackage(ResourcePackage package)
         {
             _package = package;
+        }
+
+        public void SetCamera()
+        {
+            UniversalAdditionalCameraData additionalCameraData = Camera.main.GetUniversalAdditionalCameraData();
+            if(!additionalCameraData.cameraStack.Contains(_uiRoot.UICamera)) 
+            {
+                additionalCameraData.cameraStack.Add(_uiRoot.UICamera);
+            }
         }
           
         /// <summary>
