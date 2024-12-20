@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using GameUI;
 using UnityEngine;
-using UnityEngine.Rendering.Universal;
+//using UnityEngine.Rendering.Universal;
 using YooAsset;
 using Object = UnityEngine.Object;
 
@@ -13,7 +13,7 @@ namespace GameUI
     //ui层级
     public enum EGameUILayer
     {
-        Static = 0,
+        Main = 0,
         Normal,
         Popup,
         Tips,
@@ -53,7 +53,7 @@ namespace GameUI
         private Dictionary<string,GameUIBase> _allCloseGameUIDic = new();
         private Dictionary<string,AssetHandle> _allAssetHandleDic = new();
         private Dictionary<string,string> _loadingUIDic = new();//正在加载中的UI
-        private Stack<GameUIBase> _openUIStack = new Stack<GameUIBase>();
+        private Dictionary<int,Stack<GameUIBase>> _reverseUIStack = new Dictionary<int,Stack<GameUIBase>>();
         private List<string> _notCloseUIFilterList = new(5)
         {
             "TipsPanel",
@@ -69,20 +69,6 @@ namespace GameUI
             var root = Object.Instantiate(prefab);
             Object.DontDestroyOnLoad(root);
             _uiRoot = root.GetComponent<GameUIRoot>();
-        }
-    
-        public void SetPackage(ResourcePackage package)
-        {
-            _package = package;
-        }
-
-        public void SetCamera()
-        {
-            UniversalAdditionalCameraData additionalCameraData = Camera.main.GetUniversalAdditionalCameraData();
-            if(!additionalCameraData.cameraStack.Contains(_uiRoot.UICamera)) 
-            {
-                additionalCameraData.cameraStack.Add(_uiRoot.UICamera);
-            }
         }
           
         /// <summary>
@@ -116,8 +102,7 @@ namespace GameUI
                 return;
             }
 
-            GameUIBase uiBase = null;
-            if (_allCloseGameUIDic.TryGetValue(uiName, out uiBase))
+            if (_allCloseGameUIDic.TryGetValue(uiName, out var uiBase))
             {
                 if (uiBase != null)
                 {
@@ -143,7 +128,7 @@ namespace GameUI
         {
             if (_allOpenGameUIDic.TryGetValue(uiName, out var uiBase))
             {
-                ReverseStackPop(uiBase.GameUIMode);
+                ReverseStackPop(uiBase);
                 uiBase.OnCloseUI();
                 uiBase.transform.SetAsFirstSibling();
                 uiBase.gameObject.SetActive(false);
@@ -164,8 +149,7 @@ namespace GameUI
             {
                 hideList.Add(item.Key,item.Key);
             }
-            _openUIStack.Clear();
-
+            ClearReverseStack();
             foreach (var item in _notCloseUIFilterList)
             {
                 hideList.Remove(item);
@@ -182,7 +166,7 @@ namespace GameUI
         {
             if (_allOpenGameUIDic.TryGetValue(uiName, out var uiBase))
             {
-                ReverseStackPop(uiBase.GameUIMode);
+                ReverseStackPop(uiBase);
                 uiBase.OnDestroyUI();
                 Object.Destroy(uiBase.gameObject);
                 ReleaseHandle(uiName);
@@ -201,7 +185,7 @@ namespace GameUI
             {
                 hideList.Add(item.Key);
             }
-            _openUIStack.Clear();
+            ClearReverseStack();
             foreach (var uiName in hideList)
             {
                 CloseAndDestroyUI(uiName);
@@ -210,6 +194,35 @@ namespace GameUI
             _finallyOpenUIName = null;
         }
         
+        public GameUIBase GetOpenUI(string uiName)
+        {
+            return _allOpenGameUIDic.GetValueOrDefault(uiName);
+        }
+        
+        public Camera GetUICamera()
+        {
+            if (_uiRoot != null)
+            {
+                return _uiRoot.UICamera;
+            }
+
+            return null;
+        }
+        
+        public void SetPackage(ResourcePackage package)
+        {
+            _package = package;
+        }
+
+        public void SetUICameraToStack()
+        {
+            //使用URP相机时，需要将UI相机加入到相机堆栈中
+            //UniversalAdditionalCameraData additionalCameraData = Camera.main.GetUniversalAdditionalCameraData();
+            //if(!additionalCameraData.cameraStack.Contains(_uiRoot.UICamera)) 
+            //{
+            //    additionalCameraData.cameraStack.Add(_uiRoot.UICamera);
+            //}
+        }
         public void AddUILayer(int layer,Transform transform)
         {
             _uiLayerDic.TryAdd(layer, transform);
@@ -276,7 +289,7 @@ namespace GameUI
                     CloseAllUI();
                     break;
                 case EGameUIMode.ReverseChange:
-                    ReverseStackPush();
+                    ReverseStackPush(uiBase);
                     break;
             }
             
@@ -287,40 +300,64 @@ namespace GameUI
             }
         }
 
-        private void ReverseStackPush()
+        private void ReverseStackPush(GameUIBase uiBase)
         {
             if (!string.IsNullOrEmpty(_finallyOpenUIName))
             {
                 if (_allOpenGameUIDic.TryGetValue(_finallyOpenUIName, out var finallyUiBase))
                 {
-                    finallyUiBase.OnCloseUI();
-                    finallyUiBase.transform.SetAsFirstSibling();
-                    finallyUiBase.gameObject.SetActive(false);
-                    _allCloseGameUIDic.TryAdd(_finallyOpenUIName, finallyUiBase);
-                    _allOpenGameUIDic.Remove(_finallyOpenUIName);
-                    _openUIStack.Push(finallyUiBase);
-                }
-            }
-        }
-        
-        private void ReverseStackPop(EGameUIMode mode)
-        {
-            if (mode == EGameUIMode.ReverseChange)
-            {
-                if (_openUIStack.Count > 0)
-                {
-                    _finallyOpenUIName = null;
-                    var prev = _openUIStack.Pop();
-                    if (prev != null)
+                    if (finallyUiBase.GameUIMode == uiBase.GameUIMode)
                     {
-                        OpenUI(prev.UIName, prev.Data).Forget();
+                        finallyUiBase.OnCloseUI();
+                        finallyUiBase.transform.SetAsFirstSibling();
+                        finallyUiBase.gameObject.SetActive(false);
+                        _allCloseGameUIDic.TryAdd(_finallyOpenUIName, finallyUiBase);
+                        _allOpenGameUIDic.Remove(_finallyOpenUIName);
+                        if(_reverseUIStack.TryGetValue((int)finallyUiBase.GameUILayer,out var stack))
+                        {
+                            stack.Push(finallyUiBase);
+                        }
+                        else
+                        {
+                            stack = new Stack<GameUIBase>();
+                            stack.Push(finallyUiBase);
+                            _reverseUIStack.Add((int)finallyUiBase.GameUILayer, stack);
+                        }
                     }
                 }
             }
         }
         
+        private void ReverseStackPop(GameUIBase uiBase)
+        {
+            if (uiBase.GameUIMode == EGameUIMode.ReverseChange)
+            {
+                if(_reverseUIStack.TryGetValue((int)uiBase.GameUILayer,out var stack))
+                {
+                    if (stack.Count > 0)
+                    {
+                        _finallyOpenUIName = null;
+                        var prev = stack.Pop();
+                        if (prev != null)
+                        {
+                            OpenUI(prev.UIName, prev.Data).Forget();
+                        }
+                    }
+                }
+            }
+        }
+        
+        private void ClearReverseStack()
+        {
+            foreach (var stack in _reverseUIStack.Values)
+            {
+                stack.Clear();
+            }
+            _reverseUIStack.Clear();
+        }
+        
         /// <summary>
-        /// 资源句柄释放，释放之后如果调用了卸载资源，那么这个资源就不能使用了
+        /// 资源句柄释放
         /// </summary>
         /// <param name="uiName"></param>
         private void ReleaseHandle(string uiName)
