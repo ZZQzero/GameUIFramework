@@ -17,8 +17,18 @@
     "UGUI"
   ],
   "author": {
-    "name": "zhuzhiqiang",
-    "email": "qiankanglai@gmail.com",
-    "url": "https://qiankanglai.me"
-  }
+    "name": "zhuzhiqiang"
+  },
+  "samples": [
+    {
+      "displayName": "LoopScrollRectDemo",
+      "description": "Contains several Loop Scroll demo",
+      "path": "Samples~/LoopScrollRectDemo"
+    },
+    {
+      "displayName": "UIDemo",
+      "description": "GameUI demo",
+      "path": "Samples~/UIDemo"
+    }
+  ]
 }
