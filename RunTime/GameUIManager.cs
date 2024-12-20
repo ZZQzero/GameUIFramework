@@ -72,11 +72,10 @@ namespace GameUI
         }
           
         /// <summary>
-        /// 打开UI,没有数据时可以这么用GameUIManager.Instance.OpenUI<GameUIBase<object>>("name", null);
+        /// 打开UI
         /// </summary>
         /// <param name="uiName"></param>
         /// <param name="data"></param>
-        /// <typeparam name="T"></typeparam>
         public async UniTask OpenUI(string uiName,object data)
         {
             if(_uiRoot == null)
