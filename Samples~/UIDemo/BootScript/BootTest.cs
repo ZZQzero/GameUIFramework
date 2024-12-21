@@ -155,6 +155,59 @@ public class BootTest : MonoBehaviour
     
     private void Update()
     {
+        if (Input.GetKeyDown(KeyCode.A))
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                GameLoopScrollManager.Instance.ScrollDataList.Add(i);
+            }
+
+            GameUIManager.Instance.OpenUI(GameUIName.ScrollPanel, GameLoopScrollManager.Instance.ScrollDataList);
+        }
+        
+        if (Input.GetKeyDown(KeyCode.B))
+        {
+            for (int i = 0; i < 25; i++)
+            {
+                ScrollMultiData multiData = new ScrollMultiData();
+                multiData.color = Color.cyan;
+                multiData.name = "第一种类型_" + i;
+                multiData.TypeIndex = 0;
+                GameLoopScrollManager.Instance.ScrollMultiDataList.Add(multiData);
+            }
+            
+            for (int i = 0; i < 25; i++)
+            {
+                ScrollMultiData multiData = new ScrollMultiData();
+                multiData.color = Color.red;
+                multiData.name = "第二种类型_" + i;
+                multiData.TypeIndex = 1;
+                GameLoopScrollManager.Instance.ScrollMultiDataList.Insert(i,multiData);
+            }
+
+            
+            for (int i = 0; i < 25; i++)
+            {
+                ScrollMultiData multiData = new ScrollMultiData();
+                multiData.color = Color.green;
+                multiData.name = "第三种类型_" + i;
+                multiData.TypeIndex = 2;
+                GameLoopScrollManager.Instance.ScrollMultiDataList.Insert(i,multiData);
+            }
+            
+            
+            for (int i = 0; i < 25; i++)
+            {
+                ScrollMultiData multiData = new ScrollMultiData();
+                multiData.color = Color.yellow;
+                multiData.name = "第四种类型_" + i;
+                multiData.TypeIndex = 3;
+                GameLoopScrollManager.Instance.ScrollMultiDataList.Insert(i,multiData);
+            }
+
+            GameUIManager.Instance.OpenUI(GameUIName.ScrollMultiPanel, GameLoopScrollManager.Instance.ScrollMultiDataList);
+        }
+        
         /*if (Input.GetKeyDown(KeyCode.A))
         {
             GameUIManager.Instance.CloseUI("PatchPanel");
