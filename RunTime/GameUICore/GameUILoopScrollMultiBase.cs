@@ -9,12 +9,10 @@ namespace GameUI
     public abstract class GameUILoopScrollMultiBase : GameUIBase,LoopScrollPrefabSource, LoopScrollMultiDataSource
     {
         public List<GameObject> ItemList;
-        protected LoopListBankData BankData;
         protected LoopScrollRectMulti ScrollRect;
 
         public override void OnInitUI()
         {
-            BankData = new LoopListBankData();
             ScrollRect.prefabSource = this;
             ScrollRect.dataSource = this;
             base.OnInitUI();

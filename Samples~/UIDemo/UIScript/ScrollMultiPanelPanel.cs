@@ -6,6 +6,7 @@ namespace GameUI
 {
 	public partial class ScrollMultiPanelPanel : GameUILoopScrollMultiBase
 	{
+		protected LoopListBankData BankData;
 		// Implement your own Cache Pool here. The following is just for example.
 		protected Stack<Transform> pool = new Stack<Transform>();
 		protected Dictionary<string, Stack<GameObject>> _poolType = new Dictionary<string, Stack<GameObject>>();
@@ -14,6 +15,7 @@ namespace GameUI
 			#region Auto Generate Code
 			InitData();
 			#endregion Auto Generate Code
+			BankData = new LoopListBankData();
 			ScrollRect = ScrollMultiPanelLoopVerticalScrollRectMulti;
 			base.OnInitUI();
 		}
