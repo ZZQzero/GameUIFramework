@@ -35,6 +35,8 @@ public class BootTest : MonoBehaviour
     /// 资源系统运行模式
     /// </summary>
     public EPlayMode PlayMode = EPlayMode.EditorSimulateMode;
+
+    public ERedDotFuncType DotFuncType = ERedDotFuncType.主界面;
     public string appVersion = "V1.0";
     public string hostServerIP = "http://127.0.0.1:8080";
     
@@ -116,6 +118,7 @@ public class BootTest : MonoBehaviour
             YooAssets.SetDefaultPackage(package);
             GameUIManager.Instance.SetPackage(package);
             GameUIManager.Instance.OpenUI(GameUIName.PatchPanel, package).Forget();
+            RedDotManager.Instance.Init().Forget();
         }
         else
         {
@@ -206,6 +209,20 @@ public class BootTest : MonoBehaviour
             }
 
             GameUIManager.Instance.OpenUI(GameUIName.ScrollMultiPanel, GameLoopScrollManager.Instance.ScrollMultiDataList);
+        }
+
+        if (Input.GetKeyDown(KeyCode.C))
+        {
+        }
+        
+        if (Input.GetKeyDown(KeyCode.Alpha1))
+        {
+            RedDotManager.Instance.RedDotAddChanged(DotFuncType);
+        }
+        
+        if (Input.GetKeyDown(KeyCode.Alpha2))
+        {
+            RedDotManager.Instance.RedDotRemoveChanged(DotFuncType);
         }
         
         /*if (Input.GetKeyDown(KeyCode.A))

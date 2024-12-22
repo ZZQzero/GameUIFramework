@@ -7,6 +7,7 @@ namespace GameUI
 		public const string UIHome = "UIHome";
 		public const string ScrollPanel = "@ScrollPanel";
 		public const string ScrollMultiPanel = "@ScrollMultiPanel";
+		public const string RedPanel = "GameUIName";
 		//end
 	}
 }
