@@ -129,6 +129,12 @@ namespace GameUI
                 Debug.LogError($"该节点不是最底层叶子节点： {type}，红点不允许在设置");
                 return;
             }
+
+            if (data.Count == 0)
+            {
+                Debug.LogError($"没有可移除的红点： {type}");
+                return;
+            }
             data.OnRedDotRemoveChanged();
         }
 
