@@ -117,8 +117,8 @@ public class BootTest : MonoBehaviour
             Debug.Log("更新资源清单成功！");
             YooAssets.SetDefaultPackage(package);
             GameUIManager.Instance.SetPackage(package);
+            RedDotManager.Instance.Init();
             GameUIManager.Instance.OpenUI(GameUIName.PatchPanel, package).Forget();
-            RedDotManager.Instance.Init().Forget();
         }
         else
         {
@@ -158,7 +158,7 @@ public class BootTest : MonoBehaviour
     
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.A))
+        if (Input.GetKeyDown(KeyCode.N))
         {
             for (int i = 0; i < 100; i++)
             {
@@ -168,51 +168,55 @@ public class BootTest : MonoBehaviour
             GameUIManager.Instance.OpenUI(GameUIName.ScrollPanel, GameLoopScrollManager.Instance.ScrollDataList);
         }
         
-        if (Input.GetKeyDown(KeyCode.B))
+        if (Input.GetKeyDown(KeyCode.M))
         {
-            for (int i = 0; i < 25; i++)
+            int index = 0;
+            for (int i = 0; i < 100; i++)
             {
                 ScrollMultiData multiData = new ScrollMultiData();
-                multiData.color = Color.cyan;
-                multiData.name = "第一种类型_" + i;
-                multiData.TypeIndex = 0;
-                GameLoopScrollManager.Instance.ScrollMultiDataList.Add(multiData);
-            }
-            
-            for (int i = 0; i < 25; i++)
-            {
-                ScrollMultiData multiData = new ScrollMultiData();
-                multiData.color = Color.red;
-                multiData.name = "第二种类型_" + i;
-                multiData.TypeIndex = 1;
-                GameLoopScrollManager.Instance.ScrollMultiDataList.Insert(i,multiData);
-            }
+                if (index == 0)
+                {
+                    multiData.color = Color.cyan;
+                    multiData.name = "第一种类型_" + i;
+                    multiData.TypeIndex = 0;
+                }
 
-            
-            for (int i = 0; i < 25; i++)
-            {
-                ScrollMultiData multiData = new ScrollMultiData();
-                multiData.color = Color.green;
-                multiData.name = "第三种类型_" + i;
-                multiData.TypeIndex = 2;
-                GameLoopScrollManager.Instance.ScrollMultiDataList.Insert(i,multiData);
-            }
-            
-            
-            for (int i = 0; i < 25; i++)
-            {
-                ScrollMultiData multiData = new ScrollMultiData();
-                multiData.color = Color.yellow;
-                multiData.name = "第四种类型_" + i;
-                multiData.TypeIndex = 3;
-                GameLoopScrollManager.Instance.ScrollMultiDataList.Insert(i,multiData);
+                if (index == 1)
+                {
+                    multiData.color = Color.red;
+                    multiData.name = "第二种类型_" + i;
+                    multiData.TypeIndex = 1;
+                }
+
+                if (index == 2)
+                {
+                    multiData.color = Color.green;
+                    multiData.name = "第三种类型_" + i;
+                    multiData.TypeIndex = 2;
+                }
+
+                if (index == 3)
+                {
+                    multiData.color = Color.yellow;
+                    multiData.name = "第四种类型_" + i;
+                    multiData.TypeIndex = 3;
+                }
+
+                index++;
+                if (index > 3)
+                {
+                    index = 0;
+                }
+                GameLoopScrollManager.Instance.ScrollMultiDataList.Add(multiData);
             }
 
             GameUIManager.Instance.OpenUI(GameUIName.ScrollMultiPanel, GameLoopScrollManager.Instance.ScrollMultiDataList);
         }
 
-        if (Input.GetKeyDown(KeyCode.C))
+        if (Input.GetKeyDown(KeyCode.K))
         {
+            GameUIManager.Instance.CloseUI(GameUIName.ScrollPanel);
+            GameUIManager.Instance.CloseUI(GameUIName.ScrollMultiPanel);
         }
         
         if (Input.GetKeyDown(KeyCode.Alpha1))
@@ -224,26 +228,6 @@ public class BootTest : MonoBehaviour
         {
             RedDotManager.Instance.RedDotRemoveChanged(DotFuncType);
         }
-        
-        /*if (Input.GetKeyDown(KeyCode.A))
-        {
-            GameUIManager.Instance.CloseUI("PatchPanel");
-        }
-        
-        if (Input.GetKeyDown(KeyCode.B))
-        {
-            GameUIManager.Instance.OpenUI("PatchPanel", null).Forget();
-        }
-        
-        if (Input.GetKeyDown(KeyCode.C))
-        {
-            GameUIManager.Instance.CloseAndDestroyUI("PatchPanel");
-        }
-        
-        if (Input.GetKeyDown(KeyCode.D))
-        {
-            StartCoroutine(UnloadUnusedAssets());
-        }*/
     }
     
     private IEnumerator UnloadUnusedAssets()
