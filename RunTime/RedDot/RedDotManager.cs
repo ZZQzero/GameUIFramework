@@ -40,9 +40,9 @@ namespace GameUI
         private async UniTask InitRedDot()
         {
             _package = YooAssets.GetPackage("DefaultPackage");
-            _handle = _package.LoadAssetAsync<RedDotKeyAsset>("RedDotKeyAsset");
+            _handle = _package.LoadAssetAsync<RedDotConfigAsset>("RedDotKeyAsset");
             await _handle;
-            var config = _handle.GetAssetObject<RedDotKeyAsset>();
+            var config = _handle.GetAssetObject<RedDotConfigAsset>();
             if (config != null)
             {
                 foreach (var item in config.AllRedDotList)
@@ -58,7 +58,6 @@ namespace GameUI
                         _allRedDataDic.Add((int)item.RedDotType,childData);
                         AddRedDotParent(item.ParentDotType, childData);
                     }
-                    
                 }
             }
         }

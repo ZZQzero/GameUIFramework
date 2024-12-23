@@ -5,8 +5,8 @@ using UnityEngine;
 namespace GameUI
 {
     [CreateAssetMenu(fileName = "RedDotKeyAsset", menuName = "GameUI/RedDotKeyAsset", order = 1)]
-    public class RedDotKeyAsset : ScriptableObject
+    public class RedDotConfigAsset : ScriptableObject
     {
-        public List<RedDotKeyData> AllRedDotList = new List<RedDotKeyData>();
+        public List<RedDotConfigData> AllRedDotList = new List<RedDotConfigData>();
     }
 }

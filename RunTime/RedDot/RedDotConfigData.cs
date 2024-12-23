@@ -4,7 +4,7 @@ using UnityEngine;
 namespace GameUI
 {
     [Serializable]
-    public class RedDotKeyData
+    public class RedDotConfigData
     {
         [Header("当前红点")]
         public ERedDotFuncType RedDotType;
