@@ -1,34 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
-using Sirenix.OdinInspector;
 using UnityEngine;
 using YooAsset;
 
 namespace GameUI
 {
-    public enum ERedDotFuncType
-    {
-        [LabelText("无")]
-        None = 0,
-        主界面,
-        变强,
-        商店,
-        英雄,
-        背包,
-        提升,
-        宝箱,
-        金币,
-        宝石,
-        天赋,
-        升级,
-        进阶,
-        新增,
-        合成,
-        强化,
-        淬炼,
-    }
-    
     public class RedDotManager
     {
         private RedDotManager()
@@ -50,56 +27,60 @@ namespace GameUI
             }
         }
 
-        public Dictionary<ERedDotFuncType, RedDotData> AllRedDataDic = new();
+        private Dictionary<int, RedDotData> _allRedDataDic = new();
 
         private ResourcePackage _package;
+        private AssetHandle _handle;
 
-        public async UniTask Init()
+        public void Init()
+        {
+            InitRedDot().Forget();
+        }
+
+        private async UniTask InitRedDot()
         {
             _package = YooAssets.GetPackage("DefaultPackage");
-            var handle = _package.LoadAssetAsync<RedDotKeyAsset>("RedDotKeyAsset");
-            await handle;
-            var config = handle.GetAssetObject<RedDotKeyAsset>();
+            _handle = _package.LoadAssetAsync<RedDotKeyAsset>("RedDotKeyAsset");
+            await _handle;
+            var config = _handle.GetAssetObject<RedDotKeyAsset>();
             if (config != null)
             {
                 foreach (var item in config.AllRedDotList)
                 {
-                    if (AllRedDataDic.TryGetValue(item.RedDotType, out RedDotData childData))
+                    if (_allRedDataDic.TryGetValue((int)item.RedDotType, out RedDotData childData))
                     {
-                        AddRedDotParent(item.ParentDotType,childData,config);
+                        AddRedDotParent(item.ParentDotType,childData);
                     }
                     else
                     {
-                        childData = new RedDotData(config);
+                        childData = new RedDotData();
                         childData.DotType = item.RedDotType;
-                        AllRedDataDic.Add(item.RedDotType,childData);
-                        AddRedDotParent(item.ParentDotType, childData, config);
+                        _allRedDataDic.Add((int)item.RedDotType,childData);
+                        AddRedDotParent(item.ParentDotType, childData);
                     }
                     
                 }
-
-                Debug.LogError("初始化红点系统成功");
             }
         }
 
-        public void AddRedDotParent(ERedDotFuncType type,RedDotData childData,RedDotKeyAsset config)
+        private void AddRedDotParent(ERedDotFuncType type,RedDotData childData)
         {
-            if (AllRedDataDic.TryGetValue(type, out var parentData))
+            if (_allRedDataDic.TryGetValue((int)type, out var parentData))
             {
-                childData.AddParent(parentData);
+                childData.AddParentNode(parentData);
             }
             else
             {
-                parentData = new RedDotData(config);
+                parentData = new RedDotData();
                 parentData.DotType = type;
-                childData.AddParent(parentData);
-                AllRedDataDic.Add(type,parentData);
+                childData.AddParentNode(parentData);
+                _allRedDataDic.Add((int)type,parentData);
             }
         }
 
         public RedDotData GetRedDotData(ERedDotFuncType type)
         {
-            return AllRedDataDic.GetValueOrDefault(type);
+            return _allRedDataDic.GetValueOrDefault((int)type);
         }
 
         public void RedDotAddChanged(ERedDotFuncType type)
@@ -112,6 +93,11 @@ namespace GameUI
             if (data.ParentList.Count == 0 || data.ChildList.Count != 0)
             {
                 Debug.LogError($"该节点不是最底层叶子节点： {type}，红点不允许在设置");
+                return;
+            }
+            if(data.Count != 0)
+            {
+                Debug.LogError($"已经有红点了： {type}");
                 return;
             }
             data.OnRedDotAddChanged();
@@ -136,6 +122,16 @@ namespace GameUI
                 return;
             }
             data.OnRedDotRemoveChanged();
+        }
+        
+        public void ClearAllRedDot()
+        {
+            foreach (var item in _allRedDataDic)
+            {
+                item.Value.Dispose();
+            }
+            _allRedDataDic.Clear();
+            _handle.Release();
         }
 
     }

@@ -4,13 +4,12 @@ using UnityEngine;
 
 namespace GameUI
 {
-    public class RedDotData : IRedDot
+    public class RedDotData : IRedDot,IDisposable
     {
         public ERedDotFuncType DotType = ERedDotFuncType.None;
         
         public int Count { get; set; }
-
-        public RedDotKeyAsset Config;
+        
         /// <summary>
         /// 我的所有父级
         /// </summary>
@@ -26,9 +25,8 @@ namespace GameUI
         /// </summary>
         public Action<ERedDotFuncType,int> OnRedDotChangedAction;
 
-        public RedDotData(RedDotKeyAsset config)
+        public RedDotData()
         {
-            Config = config;
             ParentList = new HashSet<RedDotData>();
             ChildList = new HashSet<RedDotData>();
         }
@@ -36,17 +34,17 @@ namespace GameUI
         /// <summary>
         /// 添加父级对象
         /// </summary>
-        public bool AddParent(RedDotData data)
+        public bool AddParentNode(RedDotData data)
         {
             var addPrent = ParentList.Add(data);       //目标设定为我的父级
-            var addChild = data.AddChild(this); //因为他是我的父级所以我为他的子级
+            var addChild = data.AddChildNode(this); //因为他是我的父级所以我为他的子级
             return addPrent && addChild;
         }
         
         /// <summary>
         /// 添加子对象
         /// </summary>
-        private bool AddChild(RedDotData data)
+        private bool AddChildNode(RedDotData data)
         {
             return ChildList.Add(data);
         }
@@ -69,7 +67,6 @@ namespace GameUI
             }
             OnRedDotChangedAction?.Invoke(DotType,Count);
             RemoveParentRedDot(ParentList);
-            Debug.LogError($"OnRedDotRemoveChanged ;  {DotType}" + Count);
         }
 
         private void AddParentRedDot(HashSet<RedDotData> parentDataList)
@@ -101,6 +98,16 @@ namespace GameUI
                     RemoveParentRedDot(parent.ParentList);
                 }
             }
+        }
+
+        public void Dispose()
+        {
+            ParentList.Clear();
+            ChildList.Clear();
+            Count = 0;
+            ParentList = null;
+            ChildList = null;
+            OnRedDotChangedAction = null;
         }
     }
 }
