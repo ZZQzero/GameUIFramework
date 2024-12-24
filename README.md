@@ -21,3 +21,9 @@
 # 安装方法
 1、在Unity中打开Package Manager窗口，点击左上角的+号，选择Add package from git URL，然后输入以下地址：
 https://github.com/ZZQzero/GameUIFramework.git 点击Add
+
+# 问题反馈
+![9928cabc04e7a29f2a1579802dc4bae6](https://github.com/user-attachments/assets/6f6537e0-5bda-4da9-b189-377764113a0e)
+
+![e00c532eafebc43116032c64684b3e4b](https://github.com/user-attachments/assets/07055802-abf6-4d8d-92ed-92ff439a6631)
+点击提交
