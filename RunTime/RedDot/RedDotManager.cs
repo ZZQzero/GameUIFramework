@@ -59,6 +59,7 @@ namespace GameUI
                     }
                 }
 #if UNITY_EDITOR
+                CheckRedDotRepeatedConfig(config);
                 CheckRedDotCircle();
 #endif
             }
@@ -151,6 +152,22 @@ namespace GameUI
                     return;
                 }
                 CheckRedDotCircle(item,visited);
+            }
+        }
+        
+        /// <summary>
+        /// 检查红点系统中是否存在相同的配置
+        /// </summary>
+        public void CheckRedDotRepeatedConfig(RedDotConfigAsset config)
+        {
+            HashSet<string> visited = new HashSet<string>();
+            foreach (var item in config.AllRedDotList)
+            {
+                var str = item.RedDotType + item.ParentDotType.ToString();
+                if (!visited.Add(str))
+                {
+                    Debug.LogError($"红点系统中存在重复的配置：子节点 ：{item.RedDotType}  父节点：{item.ParentDotType}");
+                }
             }
         }
         
