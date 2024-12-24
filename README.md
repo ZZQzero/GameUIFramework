@@ -1,9 +1,19 @@
-# GameUI
-一个简单的Unity UI框架
-框架中使用了UniTask https://github.com/Cysharp/UniTask 处理异步回调,
-YooAsset https://github.com/tuyoogame/YooAsset 加载和管理资源
+# GameUIFramework
+一个简单,方便，易于使用的Unity UI框架
 
-#插件功能
-1、UI界面代码自动生成，灵活的UI打开和回退功能。
-2、无限循环列表。
-3、红点系统。
+在网上看了看多大佬们写的UI框架，写的都很好，但是有的设计过于复杂，使用起来不够方便，不利于扩展和维护，有的功能比较单一，不满足一些需求。所以我决定自己写一个简单的UI框架，在参考许多大佬设计的基础上，加上自己多年的开发经验，分享出来供大家使用，学习和参考。
+
+目前框架中使用到的插件：
+
+1、[UniTask](https://github.com/Cysharp/UniTask) 
+
+2、[YooAsset](https://github.com/tuyoogame/YooAsset)
+
+# 框架中目前已经实现的功能
+1、UI界面代码自动生成，UI界面的加载和卸载，支持异步加载,支持UI界面的缓存,UI界面反向切换（栈管理）。
+
+2、无限循环列表[LoopScrollRect](https://github.com/qiankanglai/LoopScrollRect)，在这个基础上进行了一些修改和封装，使其更加方便使用。
+
+3、红点系统，类似有向无环图的结构设计，支持多个父节点和多个子节点（节点中不能存在环），可以自由的添加和删除红点，整个红点系统中，程序只需要简单的写几行代码，后面完全交给策划配置，想怎么显示怎么显示。
+
+4、功能持续更新中。。。想到什么功能，就加什么功能，欢迎大家提出建议和意见。
