@@ -1,14 +1,17 @@
 using System.Collections;
 using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Pool;
+using YooAsset;
 
 namespace GameUI
 {
     public enum PoolType
     {
-        Stack,
-        LinkedList
+        Normal = 0,
+        Role,
+        UI,
     }
     public class GameObjectPool
     {
@@ -26,52 +29,140 @@ namespace GameUI
         }
         
         public PoolType PoolType;
-
-        // Collection checks will throw errors if we try to release an item that is already in the pool.
+        
         public static bool CollectionChecks = true;
         public static int MaxPoolSize = 10;
-        
-        private IObjectPool<GameObject> _pool;
 
-        public IObjectPool<GameObject> Pool
+        private ResourcePackage _package;
+        private Dictionary<string, Stack<GameObject>> _pool = new Dictionary<string, Stack<GameObject>>();
+        private Dictionary<string,List<AssetHandle>> _handleDic = new();
+        private Dictionary<int, Transform> _poolTypeDic = new();
+
+
+        public void Init()
         {
-            get
+            GameObject pool = new GameObject("GameObjectPool");
+            Object.DontDestroyOnLoad(pool);
+            for (int i = 0; i <= (int)PoolType.UI; i++)
             {
-                if (_pool == null)
-                {
-                    if (PoolType == PoolType.Stack)
-                    {
-                        _pool = new ObjectPool<GameObject>(CreatePooledItem,OnTakeFromPool,OnReturnedToPool,OnDestroyPoolObject,CollectionChecks,10,MaxPoolSize);
-                    }
-                    else
-                    {
-                        _pool = new LinkedPool<GameObject>(CreatePooledItem, OnTakeFromPool, OnReturnedToPool, OnDestroyPoolObject, CollectionChecks, MaxPoolSize);
-                    }
-                }
-
-                return _pool;
+                GameObject child = new GameObject(((PoolType) i).ToString());
+                child.transform.SetParent(pool.transform);
+                _poolTypeDic.Add(i,child.transform);
             }
         }
-        
-        
-        private static GameObject CreatePooledItem()
+
+        public void SetPackage(ResourcePackage package)
         {
-            return null;
-        }
-    
-        private static void OnTakeFromPool(GameObject obj)
-        {
-            throw new System.NotImplementedException();
-        }
-        private static void OnReturnedToPool(GameObject obj)
-        {
-            throw new System.NotImplementedException();
-        }
-        private static void OnDestroyPoolObject(GameObject obj)
-        {
-            throw new System.NotImplementedException();
+            _package = package;
         }
         
+        /// <summary>
+        /// 异步加载资源
+        /// </summary>
+        /// <param name="assetName"></param>
+        /// <returns></returns>
+        public async UniTask<GameObject> GetObjectAsync(string assetName)
+        {
+            if (_pool.TryGetValue(assetName, out var stack))
+            {
+                if (stack.Count > 0)
+                {
+                    var obj = stack.Pop();
+                    obj.SetActive(true);
+                    return obj;
+                }
+                return await LoadAssetAsync(assetName);
+            }
+            stack = new Stack<GameObject>();
+            _pool.Add(assetName,stack);
+            return await LoadAssetAsync(assetName);
+        }
+        
+        /// <summary>
+        /// 异步加载资源
+        /// </summary>
+        /// <param name="assetName"></param>
+        /// <returns></returns>
+        private async UniTask<GameObject> LoadAssetAsync(string assetName)
+        {
+            var handle = _package.LoadAssetAsync<GameObject>(assetName);
+            await handle;
+            if (_handleDic.TryGetValue(assetName, out var list))
+            {
+                list.Add(handle);
+            }
+            else
+            {
+                list = new List<AssetHandle>();
+                list.Add(handle);
+                _handleDic.Add(assetName,list);
+            }
+            var operation = handle.InstantiateAsync();
+            await operation;
+            var obj = operation.Result;
+            obj.name = assetName;
+            obj.SetActive(true);
+            return obj;
+        }
+
+        /// <summary>
+        /// 同步加载资源
+        /// </summary>
+        /// <returns></returns>
+        public GameObject GetObjectSync(string assetName)
+        {
+            if (_pool.TryGetValue(assetName, out var stack))
+            {
+                if (stack.Count > 0)
+                {
+                    var obj = stack.Pop();
+                    obj.SetActive(true);
+                    return obj;
+                }
+
+                return  LoadAssetSync(assetName);
+            }
+            stack = new Stack<GameObject>();
+            _pool.Add(assetName,stack);
+            return LoadAssetSync(assetName);
+        }
+        
+        /// <summary>
+        /// 同步加载资源
+        /// </summary>
+        /// <param name="assetName"></param>
+        /// <returns></returns>
+        private GameObject LoadAssetSync(string assetName)
+        {
+            var handle = _package.LoadAssetSync<GameObject>(assetName);
+            if (_handleDic.TryGetValue(assetName, out var list))
+            {
+                list.Add(handle);
+            }
+            else
+            {
+                list = new List<AssetHandle>();
+                list.Add(handle);
+                _handleDic.Add(assetName,list);
+            }
+            var obj = handle.InstantiateSync();
+            obj.name = assetName;
+            obj.SetActive(true);
+            return obj;
+        }
+        
+        public void RecycleObject(GameObject obj,PoolType type)
+        {
+            if (_poolTypeDic.TryGetValue((int) type, out Transform parent))
+            {
+                obj.transform.SetParent(parent,false);
+                obj.SetActive(false);
+                if(_pool.TryGetValue(obj.name,out var stack))
+                {
+                    stack.Push(obj);
+                }
+            }
+        }
     }
 
 }
