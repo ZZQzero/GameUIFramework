@@ -177,6 +177,7 @@ namespace GameUI
             {
                 item.Value.Dispose();
             }
+            PlayerPrefs.Save();
             _allRedDataDic.Clear();
             _handle.Release();
         }
