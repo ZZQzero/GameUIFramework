@@ -53,8 +53,7 @@ namespace GameUI
                     }
                     else
                     {
-                        childData = new RedDotData();
-                        childData.DotType = item.RedDotType;
+                        childData = new RedDotData(item.RedDotType);
                         _allRedDataDic.Add((int)item.RedDotType,childData);
                         AddRedDotParent(item.ParentDotType, childData);
                     }
@@ -73,8 +72,7 @@ namespace GameUI
             }
             else
             {
-                parentData = new RedDotData();
-                parentData.DotType = type;
+                parentData = new RedDotData(type);
                 childData.AddParentNode(parentData);
                 _allRedDataDic.Add((int)type,parentData);
             }

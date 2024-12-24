@@ -8,6 +8,7 @@ namespace GameUI
     {
         internal ERedDotFuncType DotType = ERedDotFuncType.None;
         
+        internal string LocalSaveKey;
         public int Count { get; set; }
         
         /// <summary>
@@ -25,10 +26,13 @@ namespace GameUI
         /// </summary>
         public Action<ERedDotFuncType,int> OnRedDotChangedAction;
 
-        internal RedDotData()
+        internal RedDotData(ERedDotFuncType type)
         {
+            DotType = type;
+            LocalSaveKey = $"RedDotKey_{(int)type}";
             ParentList = new HashSet<RedDotData>();
             ChildList = new HashSet<RedDotData>();
+            Count = PlayerPrefs.GetInt(LocalSaveKey);
         }
 
         /// <summary>
@@ -53,6 +57,7 @@ namespace GameUI
         {
             Count++;
             OnRedDotChangedAction?.Invoke(DotType,Count);
+            PlayerPrefs.SetInt(LocalSaveKey,Count);
             AddParentRedDot(ParentList);
         }
 
@@ -66,6 +71,7 @@ namespace GameUI
                 return;
             }
             OnRedDotChangedAction?.Invoke(DotType,Count);
+            PlayerPrefs.SetInt(LocalSaveKey,Count);
             RemoveParentRedDot(ParentList);
         }
 
@@ -75,6 +81,7 @@ namespace GameUI
             {
                 parent.Count++;
                 parent.OnRedDotChangedAction?.Invoke(parent.DotType,parent.Count);
+                PlayerPrefs.SetInt(parent.LocalSaveKey,parent.Count);
                 if (parent.ParentList is {Count: > 0})
                 {
                     AddParentRedDot(parent.ParentList);
@@ -93,6 +100,7 @@ namespace GameUI
                     parent.Count = 0;
                 }
                 parent.OnRedDotChangedAction?.Invoke(parent.DotType,parent.Count);
+                PlayerPrefs.SetInt(parent.LocalSaveKey,parent.Count);
                 if (parent.ParentList is {Count: > 0})
                 {
                     RemoveParentRedDot(parent.ParentList);

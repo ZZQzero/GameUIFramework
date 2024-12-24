@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace GameUI
 {
-    public interface IRedDot
+    internal interface IRedDot
     {
         public int Count { get; set; }
         public void OnRedDotAddChanged();
