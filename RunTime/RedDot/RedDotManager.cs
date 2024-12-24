@@ -59,6 +59,9 @@ namespace GameUI
                         AddRedDotParent(item.ParentDotType, childData);
                     }
                 }
+#if UNITY_EDITOR
+                CheckRedDotCircle();
+#endif
             }
         }
 
@@ -94,11 +97,6 @@ namespace GameUI
                 Debug.LogError($"该节点不是最底层叶子节点： {type}，红点不允许在设置");
                 return;
             }
-            if(data.Count != 0)
-            {
-                Debug.LogError($"已经有红点了： {type}");
-                return;
-            }
             data.OnRedDotAddChanged();
         }
         
@@ -121,6 +119,41 @@ namespace GameUI
                 return;
             }
             data.OnRedDotRemoveChanged();
+        }
+
+        /// <summary>
+        /// 检查所有节点中是否存在环
+        /// </summary>
+        public void CheckRedDotCircle()
+        {
+            foreach (var item in _allRedDataDic)
+            {
+                HashSet<RedDotData> visited = new HashSet<RedDotData>();
+                CheckRedDotCircle(item.Value,visited);
+            }
+        }
+        
+
+        /// <summary>
+        /// 检查该红点中是否存在环
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="visited"></param>
+        public void CheckRedDotCircle(RedDotData data,HashSet<RedDotData> visited)
+        {
+            if (data.ChildList.Count == 0)
+            {
+                return;
+            }
+            foreach (var item in data.ChildList)
+            {
+                if(!visited.Add(item))
+                {
+                    Debug.LogError($"红点配置中存在环!!!子节点：{item.DotType}  父节点：{data.DotType}");
+                    return;
+                }
+                CheckRedDotCircle(item,visited);
+            }
         }
         
         public void ClearAllRedDot()
