@@ -34,11 +34,10 @@ namespace GameUI
             }
         }
         
-        public PoolType PoolType;
         
-        public static bool CollectionChecks = true;
-        public static int MaxPoolSize = 10;
-
+        
+        public int MaxPoolSize = 10;
+        public int CheckInterval = 1000 * 10;//检测间隔时间(毫秒)
         private ResourcePackage _package;
         private Dictionary<string, Stack<GameObject>> _pool = new();//回收进池中的对象
         private Dictionary<string, HashSet<GameObject>> _activePool = new();//活跃中的对象池
@@ -58,6 +57,7 @@ namespace GameUI
                 child.transform.SetParent(pool.transform);
                 _poolTypeDic.Add(i,child.transform);
             }
+            CheckObjectPoolCount().Forget();
         }
 
         public void SetPackage(ResourcePackage package)
@@ -238,26 +238,6 @@ namespace GameUI
             _handleDic.Remove(assetName);
         }
         
-        public Transform GetPoolTypeTransform(PoolType type)
-        {
-            return _poolTypeDic[(int)type];
-        }
-        
-        public HashSet<string> GetPoolTypeNameList(PoolType type)
-        {
-            return _poolTypeNameDic.GetValueOrDefault((int)type);
-        }
-        
-        public Stack<GameObject> GetPoolObjectStack(string assetName)
-        {
-            return _pool.GetValueOrDefault(assetName);
-        }
-        
-        public HashSet<GameObject> GetActivePoolObjectList(string assetName)
-        {
-            return _activePool.GetValueOrDefault(assetName);
-        }
-        
         /// <summary>
         /// 回收对象
         /// </summary>
@@ -363,12 +343,67 @@ namespace GameUI
                 // 释放资源句柄
                 ReleaseAssetHandle(assetName);
             }
+
+            _handleDic.Clear();
             _pool.Clear();
             _activePool.Clear();
             _poolTypeNameDic.Clear();
         }
+
+        /// <summary>
+        /// 当前对象池中的对象数量超过最大限制时，销毁多余的对象
+        /// </summary>
+        /// <returns></returns>
+        public void DestroyObjectPoolByMaxSize()
+        {
+            foreach (var pool in _pool)
+            {
+                var assetName = pool.Key;
+                var stack = GetPoolObjectStack(assetName);
+                if (stack != null)
+                {
+                    while (stack.Count > MaxPoolSize)
+                    {
+                        var obj = stack.Pop();
+                        Object.Destroy(obj);
+                    }
+                }
+            }
+        }
         
-        //-------------测试---------------
+        /// <summary>
+        /// 定时检测对象池中的对象数量，销毁多余的对象
+        /// </summary>
+        /// <returns></returns>
+        public async UniTask CheckObjectPoolCount()
+        {
+            while (true)
+            {
+                await UniTask.Delay(CheckInterval); // 每分钟检测一次
+                DestroyObjectPoolByMaxSize();
+            }
+        }
+        
+        public Transform GetPoolTypeTransform(PoolType type)
+        {
+            return _poolTypeDic[(int)type];
+        }
+        
+        public HashSet<string> GetPoolTypeNameList(PoolType type)
+        {
+            return _poolTypeNameDic.GetValueOrDefault((int)type);
+        }
+        
+        public Stack<GameObject> GetPoolObjectStack(string assetName)
+        {
+            return _pool.GetValueOrDefault(assetName);
+        }
+        
+        public HashSet<GameObject> GetActivePoolObjectList(string assetName)
+        {
+            return _activePool.GetValueOrDefault(assetName);
+        }
+
         public Dictionary<string,AssetHandle> GetAssetHandleDic()
         {
             return _handleDic;
@@ -394,7 +429,6 @@ namespace GameUI
             return _poolTypeNameDic;
         }
 
-        //-------------测试---------------
     }
 
 }

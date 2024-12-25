@@ -2,7 +2,8 @@
     "name": "GameUIFramework.Editor",
     "rootNamespace": "",
     "references": [
-        "GameUIFramework"
+        "GameUIFramework",
+        "YooAsset"
     ],
     "includePlatforms": [
         "Editor"
