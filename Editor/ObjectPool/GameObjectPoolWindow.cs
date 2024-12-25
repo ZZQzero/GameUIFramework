@@ -13,6 +13,7 @@ namespace GameUI.Editor
         private GUIStyle _style2 = new GUIStyle();
         private GUIStyle _style3 = new GUIStyle();
         private GUIStyle _style4 = new GUIStyle();
+        private int totalCount;
         
         [MenuItem("GameUI/对象池数据查看")]
         public static void ShowEditorWindow()
@@ -23,13 +24,18 @@ namespace GameUI.Editor
         
         private void OnGUI()
         {
-            _scrollPos = GUILayout.BeginScrollView(_scrollPos); //1
             _style.normal.textColor = Color.red;
             _style1.normal.textColor = Color.green;
             _style2.normal.textColor = Color.cyan;
             _style3.normal.textColor = Color.magenta;
+            _style4.normal.textColor = Color.yellow;
             
-            
+            EditorGUILayout.LabelField("对象总数：" + totalCount,_style4);
+            EditorGUILayout.LabelField("对象池总数：" + GameObjectPool.Instance.GetPoolDic().Count,_style4);
+            EditorGUILayout.LabelField("对象池类型总数：" + GameObjectPool.Instance.GetPoolTypeNameDic().Count,_style4);
+            EditorGUILayout.Space(10);
+            _scrollPos = GUILayout.BeginScrollView(_scrollPos); //1
+            totalCount = 0;
             EditorGUILayout.LabelField("--------------------被回收到池中不活跃的对象------------------", _style);
             EditorGUILayout.Space(10);
             EditorGUILayout.LabelField("回收池数量：" + GameObjectPool.Instance.GetPoolDic().Count, _style);
@@ -37,6 +43,7 @@ namespace GameUI.Editor
             {
                 GUILayout.BeginVertical();
                 EditorGUILayout.LabelField("对象池名字：" + item.Key + " ----> 池中对象数量：" + item.Value.Count);
+                totalCount += item.Value.Count; 
                 GUILayout.EndVertical();
             }
             EditorGUILayout.Space(10);
@@ -49,6 +56,7 @@ namespace GameUI.Editor
             {
                 GUILayout.BeginVertical();
                 EditorGUILayout.LabelField("对象池名字：" + item.Key + " ----> 池中对象数量：" + item.Value.Count);
+                totalCount += item.Value.Count; 
                 GUILayout.EndVertical();
             }            
             EditorGUILayout.LabelField("-------------------------被激活的对象-----------------------",_style1);
