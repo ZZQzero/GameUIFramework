@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.Pool;
 using YooAsset;
 
 namespace GameUI
@@ -398,7 +397,7 @@ namespace GameUI
         /// 当前对象池中的对象数量超过最大限制时，销毁多余的对象
         /// </summary>
         /// <returns></returns>
-        public void DestroyObjectPoolByMaxSize()
+        private void DestroyObjectPoolByMaxSize()
         {
             foreach (var pool in _pool)
             {
@@ -418,7 +417,7 @@ namespace GameUI
         /// 定时检测对象池中的对象数量，销毁多余的对象
         /// </summary>
         /// <returns></returns>
-        public async UniTask CheckObjectPoolCount()
+        private async UniTask CheckObjectPoolCount()
         {
             while (true)
             {
