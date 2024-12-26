@@ -50,12 +50,6 @@ namespace GameUI
             public int Count;
         }
         
-        public class PoolObjectData
-        {
-            public GameObject Obj;
-            public PoolType Type;
-        }
-        
         public void Init()
         {
             GameObject pool = new GameObject("GameObjectPool");
@@ -75,7 +69,7 @@ namespace GameUI
         }
 
         /// <summary>
-        /// 获取并记录活跃对象
+        /// 异步获取并记录活跃对象
         /// </summary>
         /// <param name="assetName"></param>
         /// <param name="poolType"></param>
