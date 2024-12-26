@@ -41,12 +41,22 @@ namespace GameUI
         private ResourcePackage _package;
         private Dictionary<string, Stack<GameObject>> _pool = new();//回收进池中的对象
         private Dictionary<string, HashSet<GameObject>> _activePool = new();//活跃中的对象池
-        private Dictionary<string,AssetHandle> _handleDic = new();//资源句柄
+        private Dictionary<string,AssetHandleData> _handleDic = new();//资源句柄
         private Dictionary<int, Transform> _poolTypeDic = new();//对象池类型
         private Dictionary<int,HashSet<string>> _poolTypeNameDic = new();//每个对象池类型的名字，key ---> 对象池类型，value ---> 对象池名字
         
-
-
+        public class AssetHandleData
+        {
+            public AssetHandle Handle;
+            public int Count;
+        }
+        
+        public class PoolObjectData
+        {
+            public GameObject Obj;
+            public PoolType Type;
+        }
+        
         public void Init()
         {
             GameObject pool = new GameObject("GameObjectPool");
@@ -108,33 +118,20 @@ namespace GameUI
         /// <returns></returns>
         private async UniTask<GameObject> LoadObjectAsync(string assetName,PoolType poolType)
         {
+            AddPoolTypeNameList(assetName,poolType);
             var stack = GetPoolObjectStack(assetName);
             if (stack != null)
             {
                 if (stack.Count > 0)
                 {
                     var obj = stack.Pop();
-                    obj.SetActive(true);
                     return obj;
                 }
-                return await LoadAssetAsync(assetName);
+                return await LoadAssetAsync(assetName,poolType);
             }
             stack = new Stack<GameObject>();
             _pool.Add(assetName,stack);
-
-            var nameList = GetPoolTypeNameList(poolType);
-            if(nameList != null)
-            {
-                nameList.Add(assetName);
-            }
-            else
-            {
-                nameList = new HashSet<string>();
-                nameList.Add(assetName);
-                _poolTypeNameDic.Add((int)poolType,nameList);
-            }
-            
-            return await LoadAssetAsync(assetName);
+            return await LoadAssetAsync(assetName,poolType);
         }
         
         /// <summary>
@@ -142,19 +139,20 @@ namespace GameUI
         /// </summary>
         /// <param name="assetName"></param>
         /// <returns></returns>
-        private async UniTask<GameObject> LoadAssetAsync(string assetName)
+        private async UniTask<GameObject> LoadAssetAsync(string assetName,PoolType poolType)
         {
             InstantiateOperation operation;
-            var handle = GetAssetHandle(assetName);
-            if (handle != null)
+            var handleData = GetAssetHandle(assetName);
+            if (handleData != null)
             {
-                operation = handle.InstantiateAsync();
+                handleData.Count++;
+                operation = handleData.Handle.InstantiateAsync();
             }
             else
             {
                 var assetHandle = _package.LoadAssetAsync<GameObject>(assetName);
-                _handleDic.Add(assetName, assetHandle);
                 operation = assetHandle.InstantiateAsync();
+                AddAssetHandle(assetName, assetHandle, poolType);
             }
             await operation;
             var obj = operation.Result;
@@ -169,6 +167,7 @@ namespace GameUI
         /// <returns></returns>
         private GameObject LoadObjectSync(string assetName,PoolType poolType)
         {
+            AddPoolTypeNameList(assetName,poolType);
             var stack = GetPoolObjectStack(assetName);
             if (stack != null)
             {
@@ -179,11 +178,40 @@ namespace GameUI
                     return obj;
                 }
 
-                return  LoadAssetSync(assetName);
+                return  LoadAssetSync(assetName,poolType);
             }
             stack = new Stack<GameObject>();
             _pool.Add(assetName,stack);
+            return LoadAssetSync(assetName,poolType);
+        }
+        
+        /// <summary>
+        /// 同步加载资源
+        /// </summary>
+        /// <param name="assetName"></param>
+        /// <returns></returns>
+        private GameObject LoadAssetSync(string assetName,PoolType poolType)
+        {
+            GameObject obj;
+            var handleData = GetAssetHandle(assetName);
+            if (handleData != null)
+            {
+                handleData.Count++;
+                obj = handleData.Handle.InstantiateSync();
+            }
+            else
+            {
+                var assetHandle = _package.LoadAssetSync<GameObject>(assetName);
+                obj = assetHandle.InstantiateSync();
+                AddAssetHandle(assetName,assetHandle,poolType);
+            }
+            obj.name = assetName;
+            obj.SetActive(true);
+            return obj;
+        }
 
+        private void AddPoolTypeNameList(string assetName,PoolType poolType)
+        {
             var nameList = GetPoolTypeNameList(poolType);
             if(nameList != null)
             {
@@ -195,47 +223,30 @@ namespace GameUI
                 nameList.Add(assetName);
                 _poolTypeNameDic.Add((int)poolType,nameList);
             }
-            
-            return LoadAssetSync(assetName);
         }
-        
-        /// <summary>
-        /// 同步加载资源
-        /// </summary>
-        /// <param name="assetName"></param>
-        /// <returns></returns>
-        private GameObject LoadAssetSync(string assetName)
-        {
-            GameObject obj;
-            var handle = GetAssetHandle(assetName);
-            if (handle != null)
-            {
-                obj = handle.InstantiateSync();
-            }
-            else
-            {
-                var assetHandle = _package.LoadAssetSync<GameObject>(assetName);
-                _handleDic.Add(assetName, assetHandle);
-                obj = assetHandle.InstantiateSync();
-            }
-            obj.name = assetName;
-            obj.SetActive(true);
-            return obj;
-        }
-        
-        public AssetHandle GetAssetHandle(string assetName)
-        {
-            return _handleDic.GetValueOrDefault(assetName);
-        }
-        public void ReleaseAssetHandle(string assetName)
-        {
-            var handle = GetAssetHandle(assetName);
-            if (handle != null)
-            {
-                handle.Release();
-            }
 
-            _handleDic.Remove(assetName);
+        private void AddAssetHandle(string assetName, AssetHandle handle, PoolType type)
+        {
+            AssetHandleData data = new AssetHandleData();
+            data.Count++;
+            data.Handle = handle;
+            _handleDic.Add(assetName, data);
+        }
+
+        private void ReleaseAssetHandle(string assetName)
+        {
+            var handleData = GetAssetHandle(assetName);
+            if (handleData != null)
+            {
+                handleData.Count--;
+                Debug.LogError($"释放资源句柄 {assetName}  {handleData.Count}");
+                if (handleData.Count <= 0)
+                {
+                    handleData.Count = 0;
+                    handleData.Handle.Release();
+                    _handleDic.Remove(assetName);
+                }
+            }
         }
         
         /// <summary>
@@ -285,6 +296,8 @@ namespace GameUI
                     {
                         foreach (var obj in hashSet)
                         {
+                            // 释放资源句柄
+                            ReleaseAssetHandle(obj.name);
                             Object.Destroy(obj);
                         }
                         hashSet.Clear();
@@ -296,12 +309,13 @@ namespace GameUI
                     {
                         foreach (var obj in stack)
                         {
+                            // 释放资源句柄
+                            ReleaseAssetHandle(obj.name);
                             Object.Destroy(obj);
                         }
                         stack.Clear();
                     }
-                    // 释放资源句柄
-                    ReleaseAssetHandle(assetName);
+                    
                     _pool.Remove(assetName);
                     _activePool.Remove(assetName);
                 }
@@ -325,6 +339,8 @@ namespace GameUI
                 {
                     foreach (var obj in hashSet)
                     {
+                        // 释放资源句柄
+                        ReleaseAssetHandle(obj.name);
                         Object.Destroy(obj);
                     }
                     hashSet.Clear();
@@ -336,12 +352,12 @@ namespace GameUI
                 {
                     foreach (var obj in stack)
                     {
+                        // 释放资源句柄
+                        ReleaseAssetHandle(obj.name);
                         Object.Destroy(obj);
                     }
                     stack.Clear();
                 }
-                // 释放资源句柄
-                ReleaseAssetHandle(assetName);
             }
 
             _handleDic.Clear();
@@ -384,6 +400,11 @@ namespace GameUI
             }
         }
         
+        public AssetHandleData GetAssetHandle(string assetName)
+        {
+            return _handleDic.GetValueOrDefault(assetName);
+        }
+        
         public Transform GetPoolTypeTransform(PoolType type)
         {
             return _poolTypeDic[(int)type];
@@ -404,7 +425,7 @@ namespace GameUI
             return _activePool.GetValueOrDefault(assetName);
         }
 
-        public Dictionary<string,AssetHandle> GetAssetHandleDic()
+        public Dictionary<string,AssetHandleData> GetAssetHandleDic()
         {
             return _handleDic;
         }

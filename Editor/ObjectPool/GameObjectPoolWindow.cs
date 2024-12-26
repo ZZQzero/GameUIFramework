@@ -14,6 +14,7 @@ namespace GameUI.Editor
         private GUIStyle _style3 = new GUIStyle();
         private GUIStyle _style4 = new GUIStyle();
         private int totalCount;
+        private int AssetsCount;
         
         [MenuItem("GameUI/对象池数据查看")]
         public static void ShowEditorWindow()
@@ -33,9 +34,11 @@ namespace GameUI.Editor
             EditorGUILayout.LabelField("对象总数：" + totalCount,_style4);
             EditorGUILayout.LabelField("对象池总数：" + GameObjectPool.Instance.GetPoolDic().Count,_style4);
             EditorGUILayout.LabelField("对象池类型总数：" + GameObjectPool.Instance.GetPoolTypeNameDic().Count,_style4);
+            EditorGUILayout.LabelField("对象句柄资源引用总数：" + AssetsCount,_style4);
             EditorGUILayout.Space(10);
             _scrollPos = GUILayout.BeginScrollView(_scrollPos); //1
             totalCount = 0;
+            AssetsCount = 0;
             EditorGUILayout.LabelField("--------------------被回收到池中不活跃的对象------------------", _style);
             EditorGUILayout.Space(10);
             EditorGUILayout.LabelField("回收池数量：" + GameObjectPool.Instance.GetPoolDic().Count, _style);
@@ -89,7 +92,8 @@ namespace GameUI.Editor
 
             foreach (var item in GameObjectPool.Instance.GetAssetHandleDic())
             {
-                EditorGUILayout.LabelField("对象句柄名字：" + item.Key);
+                EditorGUILayout.LabelField("对象句柄名字：" + item.Key + " ----> 句柄引用数量：" + item.Value.Count, _style3);
+                AssetsCount += item.Value.Count;
             }
 
             GUILayout.EndVertical();
