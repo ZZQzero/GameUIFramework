@@ -239,7 +239,6 @@ namespace GameUI
             if (handleData != null)
             {
                 handleData.Count--;
-                Debug.LogError($"释放资源句柄 {assetName}  {handleData.Count}");
                 if (handleData.Count <= 0)
                 {
                     handleData.Count = 0;
@@ -275,6 +274,35 @@ namespace GameUI
                 if(stack != null)
                 {
                     stack.Push(obj);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 回收改类型下所有的对象
+        /// </summary>
+        /// <param name="type"></param>
+        public void ReleaseObjectByPoolType(PoolType type)
+        {
+            var parent = GetPoolTypeTransform(type);
+            if (parent != null)
+            {
+                var nameList = GetPoolTypeNameList(type);
+                foreach (var name in nameList)
+                {
+                    var list = GetActivePoolObjectList(name);
+                    var stack = GetPoolObjectStack(name);
+                    foreach (var item in list)
+                    {
+                        item.transform.SetParent(parent,false);
+                        item.SetActive(false);
+                        
+                        if(stack != null)
+                        {
+                            stack.Push(item);
+                        }
+                    }
+                    list.Clear();
                 }
             }
         }
@@ -374,13 +402,12 @@ namespace GameUI
         {
             foreach (var pool in _pool)
             {
-                var assetName = pool.Key;
-                var stack = GetPoolObjectStack(assetName);
-                if (stack != null)
+                if (pool.Value != null)
                 {
-                    while (stack.Count > MaxPoolSize)
+                    while (pool.Value.Count > MaxPoolSize)
                     {
-                        var obj = stack.Pop();
+                        var obj = pool.Value.Pop();
+                        ReleaseAssetHandle(obj.name);
                         Object.Destroy(obj);
                     }
                 }
@@ -395,7 +422,7 @@ namespace GameUI
         {
             while (true)
             {
-                await UniTask.Delay(CheckInterval); // 每分钟检测一次
+                await UniTask.Delay(CheckInterval);
                 DestroyObjectPoolByMaxSize();
             }
         }
