@@ -285,17 +285,20 @@ namespace GameUI
                 {
                     var list = GetActivePoolObjectList(name);
                     var stack = GetPoolObjectStack(name);
-                    foreach (var item in list)
+                    if (list is { Count: > 0 })
                     {
-                        item.transform.SetParent(parent,false);
-                        item.SetActive(false);
-                        
-                        if(stack != null)
+                        foreach (var item in list)
                         {
-                            stack.Push(item);
+                            item.transform.SetParent(parent,false);
+                            item.SetActive(false);
+                        
+                            if(stack != null)
+                            {
+                                stack.Push(item);
+                            }
                         }
+                        list.Clear();
                     }
-                    list.Clear();
                 }
             }
         }
