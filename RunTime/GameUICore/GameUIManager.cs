@@ -132,6 +132,15 @@ namespace GameUI
             }
         }
         
+        public void RefreshUI(string uiName,object data)
+        {
+            if(_allOpenGameUIDic.TryGetValue(uiName,out var uiBase))
+            {
+                uiBase.Data = data;
+                uiBase.OnRefreshUI();
+            }
+        }
+        
         public void CloseUI(string uiName)
         {
             if (_allOpenGameUIDic.TryGetValue(uiName, out var uiBase))
