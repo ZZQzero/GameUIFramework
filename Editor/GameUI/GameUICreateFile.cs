@@ -364,6 +364,11 @@ namespace GameUI.Editor
             stringBuilder.Append(tab + tab + "{" + enter);
             stringBuilder.AppendLine(tab + tab + tab + "base.OnOpenUI();");
             stringBuilder.Append(tab + tab + "}" + enter);
+            
+            stringBuilder.Append(tab + tab + "public override void OnRefreshUI()" + enter);
+            stringBuilder.Append(tab + tab + "{" + enter);
+            stringBuilder.AppendLine(tab + tab + tab + "base.OnRefreshUI();");
+            stringBuilder.Append(tab + tab + "}" + enter);
 
             stringBuilder.Append(tab + tab + "public override void OnCloseUI()" + enter);
             stringBuilder.Append(tab + tab + "{" + enter);

@@ -6,6 +6,8 @@ namespace GameUI
         public void OnInitUI();
 
         public void OnOpenUI();
+        
+        public void OnRefreshUI();
 
         public void OnCloseUI();
 

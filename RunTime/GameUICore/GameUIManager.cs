@@ -122,6 +122,15 @@ namespace GameUI
             }
             await LoadUI(uiName, data);
         }
+
+        public void RefreshUI(GameUIBase uiBase,object data)
+        {
+            if (uiBase != null)
+            {
+                uiBase.Data = data;
+                uiBase.OnRefreshUI();
+            }
+        }
         
         public void CloseUI(string uiName)
         {

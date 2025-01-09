@@ -21,6 +21,11 @@ namespace GameUI
         {
         
         }
+        
+        public virtual void OnRefreshUI()
+        {
+        
+        }
 
         public virtual void OnCloseUI()
         {
