@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using UnityEngine;
@@ -41,7 +42,7 @@ namespace GameUI.Editor
         public List<ComponentData> ComponentDataList = new();
         public string ComponentFileName;
         public string PanelFileName;
-        public string PanelNameFileName;
+        public string StaticCSFileName;
         public string ClassName;
         public string UIName;
         public readonly string StaticName = "GameUIName";
@@ -70,10 +71,21 @@ namespace GameUI.Editor
                 ComponentFileName = UIName + "PanelComponent.cs";
                 PanelFileName = UIName + "Panel.cs";
                 ClassName = UIName + "Panel";
-                PanelNameFileName = StaticName + ".cs";
+                StaticCSFileName = StaticName + ".cs";
             }
         }
 
+        public string CheckPropertyExists()
+        {
+            string path = ComponentCodeGeneratePath + ComponentFileName;
+            if (File.Exists(path))
+            {
+                return File.ReadAllText(path);
+            }
+
+            return null;
+        }
+        
         public void StartGenerate(bool newFile = false)
         {
             if (!Directory.Exists(ComponentCodeGeneratePath))
@@ -93,7 +105,7 @@ namespace GameUI.Editor
 
             string path = ComponentCodeGeneratePath + ComponentFileName;
             string path1 = PanelCodeGeneratePath + PanelFileName;
-            string path2 = PanelNameCodeGeneratePath + PanelNameFileName;
+            string path2 = PanelNameCodeGeneratePath + StaticCSFileName;
 
             if (newFile)
             {
@@ -150,7 +162,7 @@ namespace GameUI.Editor
             }
             else
             {
-                CreatePanelNameFile(PanelNameCodeGeneratePath, PanelNameFileName, StaticName);
+                CreatePanelNameFile(PanelNameCodeGeneratePath, StaticCSFileName, uiRoot.name);
             }
         }
 
@@ -386,14 +398,14 @@ namespace GameUI.Editor
             CreateScript(stringBuilder.ToString(), path, fileName);
         }
         
-        public void CreatePanelNameFile(string path, string fileName, string className)
+        public void CreatePanelNameFile(string path, string fileName, string rootName)
         {
             StringBuilder stringBuilder = new StringBuilder();
             stringBuilder.Append($"namespace {NameSpaceName}" + enter);
             stringBuilder.Append("{" + enter);
             stringBuilder.Append(tab + "public static class " + StaticName + enter);
             stringBuilder.Append(tab + "{" + enter);
-            stringBuilder.Append(tab + tab + WriteUINameLine(UIName,className));
+            stringBuilder.Append(tab + tab + WriteUINameLine(UIName,rootName));
             stringBuilder.AppendLine(tab + tab + "//end");
 
             stringBuilder.Append(tab + "}" + enter);

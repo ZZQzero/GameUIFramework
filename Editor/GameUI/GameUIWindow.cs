@@ -25,6 +25,8 @@ namespace GameUI.Editor
         private GUIStyle _errorStyle = new GUIStyle();
         private GUIStyle _warningStyle = new GUIStyle();
 
+        private string fileStr;
+
 
         [MenuItem("GameUI/编辑UI")]
         public static void ShowEditorWindow()
@@ -80,6 +82,11 @@ namespace GameUI.Editor
                 return;
             }
 
+            if (string.IsNullOrEmpty(fileStr))
+            {
+                fileStr = _createFile.CheckPropertyExists();
+            }
+
             ShowItem();
             ShowBtn();
         }
@@ -97,7 +104,7 @@ namespace GameUI.Editor
             EditorGUILayout.LabelField("脚本名字2：", _createFile.PanelFileName, _fileStyle);
             EditorGUILayout.Space(10);
             EditorGUILayout.LabelField("代码生成路径3：", _createFile.PanelNameCodeGeneratePath, _fileStyle);
-            EditorGUILayout.LabelField("脚本名字3：", _createFile.PanelNameFileName, _fileStyle);
+            EditorGUILayout.LabelField("脚本名字3：", _createFile.StaticCSFileName, _fileStyle);
 
             _warningStyle.normal.textColor = Color.yellow;
             anewFile = EditorGUILayout.ToggleLeft("重新生成！（清空原有的代码，慎用！）", anewFile, _warningStyle);
@@ -153,6 +160,10 @@ namespace GameUI.Editor
                         component.PropertyName = EditorGUILayout.TextField(component.PropertyName);
 
                         EditorGUILayout.Space(5);
+                        if (fileStr != null && fileStr.Contains(component.ComponentType) && fileStr.Contains(component.PropertyName))
+                        {
+                            component.IsSelect = true;
+                        }
                         component.IsSelect = EditorGUILayout.Toggle(component.SelectIndex.ToString(), component.IsSelect);
                         GUILayout.EndHorizontal(); //5
                     }
@@ -195,6 +206,10 @@ namespace GameUI.Editor
                     _createFile.StartGenerate(anewFile);
                     AssetDatabase.Refresh();
                 }
+            }
+
+            if (GUILayout.Button("获取属性"))
+            {
             }
 
             GUILayout.EndHorizontal(); //1
