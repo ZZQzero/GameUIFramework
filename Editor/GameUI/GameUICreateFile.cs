@@ -148,6 +148,12 @@ namespace GameUI.Editor
             {
                 var tempStr = File.ReadAllText(path2);
                 int startIndex = tempStr.IndexOf("//end", StringComparison.OrdinalIgnoreCase);
+
+                if (tempStr.Contains(UIName) && tempStr.Contains(uiRoot.name))
+                {
+                    Debug.Log("已经存在相同的名字");
+                    return;
+                }
                 
                 if (startIndex < 0)
                 {
