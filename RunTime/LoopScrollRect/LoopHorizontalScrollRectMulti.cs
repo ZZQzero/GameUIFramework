@@ -63,7 +63,7 @@ namespace UnityEngine.UI
             if ((viewBounds.size.x < contentBounds.min.x - viewBounds.max.x) && itemTypeEnd > itemTypeStart)
             {
                 float currentSize = contentBounds.size.x;
-                float elementSize = (currentSize - contentSpacing * (CurrentLines - 1)) / CurrentLines;
+                float elementSize = EstimiateElementSize();
                 ReturnToTempPool(false, itemTypeEnd - itemTypeStart);
                 itemTypeEnd = itemTypeStart;
 
@@ -78,6 +78,7 @@ namespace UnityEngine.UI
                     itemTypeStart = Mathf.Max(itemTypeStart, 0);
                 }
                 itemTypeEnd = itemTypeStart;
+                itemTypeSize = 0;
 
                 float offset = offsetCount * (elementSize + contentSpacing);
                 m_Content.anchoredPosition -= new Vector2(offset + (reverseDirection ? currentSize : 0), 0);
@@ -96,7 +97,7 @@ namespace UnityEngine.UI
                     maxItemTypeStart = (maxItemTypeStart / contentConstraintCount) * contentConstraintCount;
                 }
                 float currentSize = contentBounds.size.x;
-                float elementSize = (currentSize - contentSpacing * (CurrentLines - 1)) / CurrentLines;
+                float elementSize = EstimiateElementSize();
                 ReturnToTempPool(true, itemTypeEnd - itemTypeStart);
                 // TODO: fix with contentConstraint?
                 itemTypeStart = itemTypeEnd;
@@ -112,6 +113,7 @@ namespace UnityEngine.UI
                     itemTypeStart = Mathf.Max(itemTypeStart, 0);
                 }
                 itemTypeEnd = itemTypeStart;
+                itemTypeSize = 0;
 
                 float offset = offsetCount * (elementSize + contentSpacing);
                 m_Content.anchoredPosition += new Vector2(offset + (reverseDirection ? 0 : currentSize), 0);
@@ -149,7 +151,8 @@ namespace UnityEngine.UI
                     changed = true;
             }
 
-            if (viewBounds.max.x < contentBounds.max.x - threshold - m_ContentRightPadding)
+            if (viewBounds.max.x < contentBounds.max.x - threshold - m_ContentRightPadding
+                && viewBounds.size.x < contentBounds.size.x - threshold)
             {
                 float size = DeleteItemAtEnd(), totalSize = size;
                 while (size > 0 && viewBounds.max.x < contentBounds.max.x - threshold - m_ContentRightPadding - totalSize)
@@ -161,7 +164,8 @@ namespace UnityEngine.UI
                     changed = true;
             }
 
-            if (viewBounds.min.x > contentBounds.min.x + threshold + m_ContentLeftPadding)
+            if (viewBounds.min.x > contentBounds.min.x + threshold + m_ContentLeftPadding
+                && viewBounds.size.x < contentBounds.size.x - threshold)
             {
                 float size = DeleteItemAtStart(), totalSize = size;
                 while (size > 0 && viewBounds.min.x > contentBounds.min.x + threshold + m_ContentLeftPadding + totalSize)

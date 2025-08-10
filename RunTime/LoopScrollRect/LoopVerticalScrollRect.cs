@@ -69,7 +69,7 @@ namespace UnityEngine.UI
                     maxItemTypeStart = Mathf.Max(0, totalCount - (itemTypeEnd - itemTypeStart));
                 }
                 float currentSize = contentBounds.size.y;
-                float elementSize = (currentSize - contentSpacing * (CurrentLines - 1)) / CurrentLines;
+                float elementSize = EstimiateElementSize();
                 ReturnToTempPool(true, itemTypeEnd - itemTypeStart);
                 itemTypeStart = itemTypeEnd;
 
@@ -84,6 +84,7 @@ namespace UnityEngine.UI
                     itemTypeStart = Mathf.Max(itemTypeStart, 0);
                 }
                 itemTypeEnd = itemTypeStart;
+                itemTypeSize = 0;	
 
                 float offset = offsetCount * (elementSize + contentSpacing);
                 m_Content.anchoredPosition -= new Vector2(0, offset + (reverseDirection ? 0 : currentSize));
@@ -96,7 +97,7 @@ namespace UnityEngine.UI
             if ((viewBounds.min.y - contentBounds.max.y > viewBounds.size.y) && itemTypeEnd > itemTypeStart)
             {
                 float currentSize = contentBounds.size.y;
-                float elementSize = (currentSize - contentSpacing * (CurrentLines - 1)) / CurrentLines;
+                float elementSize = EstimiateElementSize();
                 ReturnToTempPool(false, itemTypeEnd - itemTypeStart);
                 itemTypeEnd = itemTypeStart;
 
@@ -111,6 +112,7 @@ namespace UnityEngine.UI
                     itemTypeStart = Mathf.Max(itemTypeStart, 0);
                 }
                 itemTypeEnd = itemTypeStart;
+                itemTypeSize = 0;
 
                 float offset = offsetCount * (elementSize + contentSpacing);
                 m_Content.anchoredPosition += new Vector2(0, offset + (reverseDirection ? currentSize : 0));
@@ -149,7 +151,8 @@ namespace UnityEngine.UI
                     changed = true;
             }
 
-            if (viewBounds.min.y > contentBounds.min.y + threshold + m_ContentBottomPadding)
+            if (viewBounds.min.y > contentBounds.min.y + threshold + m_ContentBottomPadding
+                && viewBounds.size.y < contentBounds.size.y - threshold)
             {
                 float size = DeleteItemAtEnd(), totalSize = size;
                 while (size > 0 && viewBounds.min.y > contentBounds.min.y + threshold + m_ContentBottomPadding + totalSize)
@@ -161,7 +164,8 @@ namespace UnityEngine.UI
                     changed = true;
             }
 
-            if (viewBounds.max.y < contentBounds.max.y - threshold - m_ContentTopPadding)
+            if (viewBounds.max.y < contentBounds.max.y - threshold - m_ContentTopPadding
+                && viewBounds.size.y < contentBounds.size.y - threshold)
             {
                 float size = DeleteItemAtStart(), totalSize = size;
                 while (size > 0 && viewBounds.max.y < contentBounds.max.y - threshold - m_ContentTopPadding - totalSize)
