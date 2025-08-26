@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using UnityEditor;
 using UnityEngine;
 
 namespace GameUI.Editor
@@ -16,16 +17,19 @@ namespace GameUI.Editor
         {
             public Transform Item;
             public Transform Root;
+            public string TempName;
             public List<ComponentDataParams> ComponentList = new();
         }
 
         public class ComponentDataParams
         {
             public Component Component;
+            public GameObject GameObject;
             public string ComponentPath; //相对路径
             public string ComponentRootPath; //绝对路径
             public string PropertyName;
             public string ComponentType;
+            public string GameObjectName;
             public bool IsSelect = false;
             public bool IsError = false;
             public int SelectIndex = 0;
@@ -37,9 +41,11 @@ namespace GameUI.Editor
             { "UnityEngine.CanvasRenderer", "UnityEngine.CanvasRenderer" },
             { "UnityEngine.Canvas", "UnityEngine.Canvas" },
             { "UnityEngine.UI.GraphicRaycaster", "UnityEngine.UI.GraphicRaycaster" },
+            { "GameUI.GameUISetting", "GameUI.GameUISetting" },
         };
 
         public List<ComponentData> ComponentDataList = new();
+        public List<Transform> TransformList = new();
         public string ComponentFileName;
         public string PanelFileName;
         public string StaticCSFileName;
@@ -47,10 +53,11 @@ namespace GameUI.Editor
         public string UIName;
         public readonly string StaticName = "GameUIName";
         public readonly string NameSpaceName = "GameUI";
-        public readonly string ComponentCodeGeneratePath = Application.dataPath + "/GameUI/Samples/UIScriptsGenerate/";
-        public readonly string PanelCodeGeneratePath = Application.dataPath + "/GameUI/Samples/UIScript/";
-        public readonly string PanelNameCodeGeneratePath = Application.dataPath + "/GameUI/Samples/UIScript/";
-
+        public readonly string ComponentCodeGeneratePath = Application.dataPath + "/Script/GameUI/UIScriptsGenerate/";
+        public readonly string PanelCodeGeneratePath = Application.dataPath + "/Script/GameUI/UIScript/";
+        public readonly string PanelNameCodeGeneratePath = Application.dataPath + "/Script/GameUI/UIScript/";
+        public Type ScriptType = null;
+        
         private Transform uiRoot;
         private bool isInit;
 
@@ -59,20 +66,28 @@ namespace GameUI.Editor
         private string tab = "\t";
         private string enter = "\n";
 
-        public void Init(Transform selectUI)
+        public void Init(Transform selectUI,bool isSelect = true)
         {
             if (!isInit)
             {
                 uiRoot = selectUI;
                 isInit = true;
-                GetItemComponent(uiRoot, uiRoot);
-                GetTransformChild(uiRoot, uiRoot);
+                ComponentDataList.Clear();
                 UIName = Regex.Replace(selectUI.name, pattern, "");
                 ComponentFileName = UIName + "PanelComponent.cs";
                 PanelFileName = UIName + "Panel.cs";
                 ClassName = UIName + "Panel";
                 StaticCSFileName = StaticName + ".cs";
+                AddFilterComponentName();
+                GetPrefabComponent(uiRoot, uiRoot,isSelect);
+                GetPrefabChildComponent(uiRoot, uiRoot,isSelect);
             }
+        }
+
+        private void AddFilterComponentName()
+        {
+            string filterName = $"{NameSpaceName}.{ClassName}";
+            FilterComponentDic.Add(filterName,filterName);
         }
 
         public string CheckPropertyExists()
@@ -172,7 +187,7 @@ namespace GameUI.Editor
             }
         }
 
-        public void GetTransformChild(Transform parent, Transform root)
+        public void GetPrefabChildComponent(Transform parent, Transform root,bool isSelect)
         {
             if (parent.childCount != 0)
             {
@@ -184,6 +199,7 @@ namespace GameUI.Editor
                     {
                         ComponentData data = new ComponentData();
                         data.Item = child;
+                        data.TempName =  child.name;
                         if (data.Root == null)
                         {
                             data.Root = root;
@@ -204,7 +220,10 @@ namespace GameUI.Editor
 
                             ComponentDataParams componentDataParams = new ComponentDataParams();
                             componentDataParams.Component = components[j];
+                            /*componentDataParams.GameObject = components[j].gameObject;
+                            componentDataParams.GameObjectName =  components[j].gameObject.name;*/
                             componentDataParams.SelectIndex = j;
+                            componentDataParams.IsSelect = isSelect;
                             var typeStr = components[j].GetType().ToString();
                             componentDataParams.ComponentType = typeStr;
                             var strs = typeStr.Split('.');
@@ -212,25 +231,41 @@ namespace GameUI.Editor
                             componentDataParams.PropertyName = CapitalizeFirstLetter(replacement + strs[^1]); //取最后一个
                             data.ComponentList.Add(componentDataParams);
                         }
-
+                        
+                        //-------------gameObject组件--------------
+                        ComponentDataParams componentDataParamsObj = new ComponentDataParams();
+                        componentDataParamsObj.GameObject = child.gameObject;
+                        componentDataParamsObj.GameObjectName = child.gameObject.name;
+                        componentDataParamsObj.Component = null;
+                        componentDataParamsObj.SelectIndex = 0;
+                        var typeStr1 = componentDataParamsObj.GameObject.GetType().ToString();
+                        componentDataParamsObj.ComponentType = null;
+                        componentDataParamsObj.IsSelect = isSelect;
+                        var strs1 = typeStr1.Split('.');
+                        string replacement1 = Regex.Replace(child.name, pattern, "");
+                        componentDataParamsObj.PropertyName = CapitalizeFirstLetter(replacement1 + strs1[^1]); //取最后一个
+                        data.ComponentList.Add(componentDataParamsObj);
+                        //-------------gameObject组件--------------
+                        
                         ComponentDataList.Add(data);
                         curRoot = child;
                     }
 
                     if (child.childCount != 0)
                     {
-                        GetTransformChild(child, curRoot);
+                        GetPrefabChildComponent(child, curRoot,isSelect);
                     }
                 }
             }
         }
 
-        public void GetItemComponent(Transform parent, Transform root)
+        public void GetPrefabComponent(Transform parent, Transform root,bool isSelect)
         {
             if (parent.name.StartsWith(tag))
             {
                 ComponentData data = new ComponentData();
                 data.Item = parent;
+                data.TempName = parent.name;
                 if (data.Root == null)
                 {
                     data.Root = root;
@@ -252,6 +287,7 @@ namespace GameUI.Editor
                     ComponentDataParams componentDataParams = new ComponentDataParams();
                     componentDataParams.Component = components[j];
                     componentDataParams.SelectIndex = j;
+                    componentDataParams.IsSelect = isSelect;
                     var typeStr = components[j].GetType().ToString();
                     componentDataParams.ComponentType = typeStr;
                     var strs = typeStr.Split('.');
@@ -279,6 +315,22 @@ namespace GameUI.Editor
             }
 
             return path;
+        }
+
+        public void GetPrefabChild(Transform root)
+        {
+            if (root.childCount != 0)
+            {
+                for (int i = 0; i < root.childCount; i++)
+                {
+                    var child = root.GetChild(i);
+                    TransformList.Add(child);
+                    if (child.childCount != 0)
+                    {
+                        GetPrefabChild(child);
+                    }
+                }
+            }
         }
 
         public void CreateComponentFile(string path, string fileName, string className)
@@ -310,13 +362,21 @@ namespace GameUI.Editor
                 {
                     if (item.IsSelect)
                     {
-                        string properity = $"{tab}private {item.Component.GetType()} {item.PropertyName};";
-                        stringBuilder.AppendLine(tab + properity);
+                        if (item.Component != null)
+                        {
+                            string properity = $"{tab}[SerializeField] private {item.Component.GetType()} {item.PropertyName};";
+                            stringBuilder.AppendLine(tab + properity);
+                        }
+                        else
+                        {
+                            string properity = $"{tab}[SerializeField] private {item.GameObject.GetType()} {item.PropertyName};";
+                            stringBuilder.AppendLine(tab + properity);
+                        }
                     }
                 }
             }
 
-            stringBuilder.AppendLine();
+            /*stringBuilder.AppendLine();
             stringBuilder.Append(tab + tab + "public void InitData()" + enter);
             stringBuilder.Append(tab + tab + "{" + enter);
 
@@ -354,9 +414,9 @@ namespace GameUI.Editor
                         }
                     }
                 }
-            }
+            }*/
 
-            stringBuilder.Append(tab + tab + "}" + enter);
+            //stringBuilder.Append(tab + tab + "}" + enter);
             return stringBuilder.ToString();
         }
 
@@ -373,9 +433,9 @@ namespace GameUI.Editor
             stringBuilder.Append(tab + tab + "public override void OnInitUI()" + enter);
             stringBuilder.Append(tab + tab + "{" + enter);
             stringBuilder.AppendLine(tab + tab + tab + "base.OnInitUI();");
-            stringBuilder.AppendLine(tab + tab + tab + "#region Auto Generate Code");
-            stringBuilder.Append(tab + tab + tab + "InitData();" + enter);
-            stringBuilder.AppendLine(tab + tab + tab + "#endregion Auto Generate Code");
+            //stringBuilder.AppendLine(tab + tab + tab + "#region Auto Generate Code");
+            //stringBuilder.Append(tab + tab + tab + "InitData();" + enter);
+            //stringBuilder.AppendLine(tab + tab + tab + "#endregion Auto Generate Code");
             stringBuilder.Append(tab + tab + "}" + enter);
 
             stringBuilder.Append(tab + tab + "public override void OnOpenUI()" + enter);
@@ -464,12 +524,100 @@ namespace GameUI.Editor
             return dic.Values.Any(c => c.IsError);
         }
 
-        //设置属性名首字母为大写
+        //设置属性名首字母为小写
         private string CapitalizeFirstLetter(string input)
         {
             if (string.IsNullOrEmpty(input))
                 return input;
-            return char.ToUpper(input[0]) + input.Substring(1);
+            return char.ToLower(input[0]) + input.Substring(1);
+        }
+
+        public void AddScriptToPrefab(GameObject prefab)
+        {
+            var assembly = Assembly.Load("Assembly-CSharp");
+            if (assembly == null)
+            {
+                Debug.LogError($"无法找到程序集:");
+                return;
+            }
+            
+            //最耗时，但最全面
+            /*foreach (var assemblys in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                foreach (var type in assemblys.GetTypes())
+                {
+                    if (type.Name == PanelFileName.Replace(".cs", ""))
+                    {
+                        scriptType = type;
+                        break;
+                    }
+                }
+
+                if (scriptType != null)
+                {
+                    break;
+                }
+            }*/
+
+            var types = assembly.GetTypes();
+            foreach (var type in types)
+            {
+                if (type.Name == PanelFileName.Replace(".cs", ""))
+                {
+                    ScriptType = type;
+                    break;
+                }
+            }
+
+            if (ScriptType == null)
+            {
+                Debug.LogError($"无法找到类名: {PanelFileName}");
+                return;
+            }
+
+            var component = prefab.GetComponent(ScriptType);
+            if (component == null)
+            {
+                prefab.AddComponent(ScriptType);
+            }
+            EditorUtility.SetDirty(prefab);
+            AutoBindFields(prefab);
+        }
+
+        private void AutoBindFields(GameObject prefab)
+        {
+            var curScriptComponent =  prefab.GetComponent(ScriptType);
+            if (curScriptComponent == null)
+            {
+                Debug.LogError($"没有找到Component  {ScriptType}");
+                return;
+            }
+            
+            SerializedObject serializedObject = new SerializedObject(curScriptComponent);
+            foreach (var component in ComponentDataList)
+            {
+                foreach (var item in component.ComponentList)
+                {
+                    string name = item.PropertyName;
+                    SerializedProperty property = serializedObject.FindProperty(name);
+                    if (property != null)
+                    {
+                        if (item.Component != null)
+                        {
+                            property.objectReferenceValue = item.Component;
+                        }
+                        else if(item.GameObject != null)
+                        {
+                            property.objectReferenceValue = item.GameObject;
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogError($"没有找到这个字段： {item.PropertyName}");
+                    }
+                }
+            }
+            serializedObject.ApplyModifiedProperties();
         }
     }
 

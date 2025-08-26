@@ -3,7 +3,8 @@
     "rootNamespace": "",
     "references": [
         "GameUIFramework",
-        "YooAsset"
+        "YooAsset",
+        "UniTask"
     ],
     "includePlatforms": [
         "Editor"
