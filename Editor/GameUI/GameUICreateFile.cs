@@ -53,9 +53,9 @@ namespace GameUI.Editor
         public string UIName;
         public readonly string StaticName = "GameUIName";
         public readonly string NameSpaceName = "GameUI";
-        public readonly string ComponentCodeGeneratePath = Application.dataPath + "/Script/GameUI/UIScriptsGenerate/";
-        public readonly string PanelCodeGeneratePath = Application.dataPath + "/Script/GameUI/UIScript/";
-        public readonly string PanelNameCodeGeneratePath = Application.dataPath + "/Script/GameUI/UIScript/";
+        public string ComponentCodeGeneratePath = Application.dataPath + "/Script/GameUI/UIScriptsGenerate/";
+        public string PanelCodeGeneratePath = Application.dataPath + "/Script/GameUI/UIScript/";
+        public string PanelNameCodeGeneratePath = Application.dataPath + "/Script/GameUI/UIScript/";
         public Type ScriptType = null;
         
         private Transform uiRoot;
@@ -118,14 +118,15 @@ namespace GameUI.Editor
                 Directory.CreateDirectory(PanelNameCodeGeneratePath);
             }
 
-            string path = ComponentCodeGeneratePath + ComponentFileName;
-            string path1 = PanelCodeGeneratePath + PanelFileName;
-            string path2 = PanelNameCodeGeneratePath + StaticCSFileName;
-
+            string path = Path.Combine(ComponentCodeGeneratePath, ComponentFileName).Replace("\\", "/");
+            string path1 = Path.Combine(PanelCodeGeneratePath,PanelFileName).Replace("\\", "/");
+            string path2 = Path.Combine(PanelNameCodeGeneratePath,StaticCSFileName).Replace("\\", "/");
+            
             if (newFile)
             {
-                CreateComponentFile(ComponentCodeGeneratePath, ComponentFileName, ClassName);
-                CreatePanelFile(PanelCodeGeneratePath, PanelFileName, ClassName);
+                CreateComponentFile(path, ClassName);
+                CreatePanelFile(path1, ClassName);
+                CreatePanelNameFile(path2);
                 return;
             }
 
@@ -151,40 +152,15 @@ namespace GameUI.Editor
             }
             else
             {
-                CreateComponentFile(ComponentCodeGeneratePath, ComponentFileName, ClassName);
+                CreateComponentFile(path, ClassName);
             }
 
             if (!File.Exists(path1))
             {
-                CreatePanelFile(PanelCodeGeneratePath, PanelFileName, ClassName);
+                CreatePanelFile(path1, ClassName);
             }
             
-            if (File.Exists(path2))
-            {
-                var tempStr = File.ReadAllText(path2);
-                int startIndex = tempStr.IndexOf("//end", StringComparison.OrdinalIgnoreCase);
-
-                if (tempStr.Contains(UIName) && tempStr.Contains(uiRoot.name))
-                {
-                    Debug.Log("已经存在相同的名字");
-                    return;
-                }
-                
-                if (startIndex < 0)
-                {
-                    throw new InvalidOperationException("Invalid start or end markers in the target file.");
-                }
-                string before = tempStr.Substring(0, startIndex);
-                string after = tempStr.Substring(startIndex);
-                string contentToInsert = WriteUINameLine(UIName,uiRoot.name);
-                string newContent = before + contentToInsert + tab + tab + after;
-
-                File.WriteAllText(path2, newContent);
-            }
-            else
-            {
-                CreatePanelNameFile(PanelNameCodeGeneratePath, StaticCSFileName, uiRoot.name);
-            }
+            CreatePanelNameFile(path2);
         }
 
         public void GetPrefabChildComponent(Transform parent, Transform root,bool isSelect)
@@ -333,7 +309,7 @@ namespace GameUI.Editor
             }
         }
 
-        public void CreateComponentFile(string path, string fileName, string className)
+        public void CreateComponentFile(string path, string className)
         {
             StringBuilder stringBuilder = new StringBuilder();
             stringBuilder.Append("using UnityEngine;" + enter);
@@ -349,7 +325,7 @@ namespace GameUI.Editor
             stringBuilder.Append(tab + "}" + enter);
             stringBuilder.Append("}" + enter);
 
-            CreateScript(stringBuilder.ToString(), path, fileName);
+            CreateScript(stringBuilder.ToString(), path);
         }
 
         public string WriteComponentLine()
@@ -420,7 +396,7 @@ namespace GameUI.Editor
             return stringBuilder.ToString();
         }
 
-        public void CreatePanelFile(string path, string fileName, string className)
+        public void CreatePanelFile(string path, string className)
         {
             StringBuilder stringBuilder = new StringBuilder();
             stringBuilder.Append("using UnityEngine;" + enter);
@@ -461,10 +437,40 @@ namespace GameUI.Editor
             stringBuilder.Append(tab + "}" + enter);
             stringBuilder.Append("}" + enter);
 
-            CreateScript(stringBuilder.ToString(), path, fileName);
+            CreateScript(stringBuilder.ToString(), path);
+        }
+
+        public void CreatePanelNameFile(string path)
+        {
+            if (File.Exists(path))
+            {
+                var tempStr = File.ReadAllText(path);
+                int startIndex = tempStr.IndexOf("//end", StringComparison.OrdinalIgnoreCase);
+
+                if (tempStr.Contains(UIName) && tempStr.Contains(uiRoot.name))
+                {
+                    Debug.Log("已经存在相同的名字");
+                    return;
+                }
+                
+                if (startIndex < 0)
+                {
+                    throw new InvalidOperationException("Invalid start or end markers in the target file.");
+                }
+                string before = tempStr.Substring(0, startIndex);
+                string after = tempStr.Substring(startIndex);
+                string contentToInsert = WriteUINameLine(UIName,uiRoot.name);
+                string newContent = before + contentToInsert + tab + tab + after;
+
+                File.WriteAllText(path, newContent);
+            }
+            else
+            {
+                CreatePanelNameFile(path, uiRoot.name);
+            }
         }
         
-        public void CreatePanelNameFile(string path, string fileName, string rootName)
+        public void CreatePanelNameFile(string path, string rootName)
         {
             StringBuilder stringBuilder = new StringBuilder();
             stringBuilder.Append($"namespace {NameSpaceName}" + enter);
@@ -477,7 +483,7 @@ namespace GameUI.Editor
             stringBuilder.Append(tab + "}" + enter);
             stringBuilder.Append("}" + enter);
 
-            CreateScript(stringBuilder.ToString(), path, fileName);
+            CreateScript(stringBuilder.ToString(), path);
         }
 
         public string WriteUINameLine(string propertyName, string prefabName)
@@ -487,9 +493,8 @@ namespace GameUI.Editor
             return stringBuilder.ToString();
         }
 
-        public void CreateScript(string content, string path, string fileName)
+        public void CreateScript(string content, string path)
         {
-            path += fileName;
             using (StreamWriter streamWriter = File.CreateText(path))
             {
                 streamWriter.Write(content);
