@@ -39,20 +39,13 @@ namespace GameUI
 
 		public override GameObject GetObject(int index)
 		{
-			if (pool.Count == 0)
-			{
-				return Instantiate(item);
-			}
-			Transform candidate = pool.Pop();
-			candidate.gameObject.SetActive(true);
-			return candidate.gameObject;
+			var cell = GameObjectPool.Instance.GetObjectSync(item.name,PoolType.UI);
+			return cell;
 		}
 
 		public override void ReturnObject(Transform trans)
 		{
-			trans.gameObject.SetActive(false);
-			trans.SetParent(transform, false);
-			pool.Push(trans);
+			GameObjectPool.Instance.ReleaseObject(trans.gameObject,PoolType.UI);
 		}
 
 		public override void ProvideData(Transform trans, int idx)

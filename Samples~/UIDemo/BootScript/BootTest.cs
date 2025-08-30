@@ -61,6 +61,7 @@ public class BootTest : MonoBehaviour
         YooAssets.Initialize();
         
         GameUIManager.Instance.Init();
+        GameObjectPool.Instance.Init();
         await LoadLocalPackage(defaultPackageName,PlayMode);
     }
     
@@ -119,6 +120,7 @@ public class BootTest : MonoBehaviour
             Debug.Log("更新资源清单成功！");
             YooAssets.SetDefaultPackage(package);
             GameUIManager.Instance.SetPackage(package);
+            GameObjectPool.Instance.SetPackage(package);
             RedDotManager.Instance.Init();
             GameUIManager.Instance.OpenUI(GameUIName.PatchPanel, package).Forget();
             OpenScrollPanel();
