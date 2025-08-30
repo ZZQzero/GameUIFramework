@@ -58,7 +58,7 @@ namespace GameUI.Editor
             foreach (var item in GameObjectPool.Instance.GetActivePoolDic())
             {
                 GUILayout.BeginVertical();
-                EditorGUILayout.LabelField("对象池名字：" + item.Key + " ----> 池中对象数量：" + item.Value.Count);
+                EditorGUILayout.LabelField("对象池名字：" + (PoolType)item.Key + " ----> 池中对象数量：" + item.Value.Count);
                 totalCount += item.Value.Count; 
                 GUILayout.EndVertical();
             }            
@@ -76,7 +76,7 @@ namespace GameUI.Editor
                 EditorGUILayout.LabelField("对象池类型：" + (PoolType)item.Key + " ----> 该类型对象池数量：" + item.Value.Count, _style2);
                 foreach (var value in item.Value)
                 {
-                    EditorGUILayout.LabelField("对象池类型：" + (PoolType)item.Key + " ----> 该类型对象池名字：" + value);
+                    EditorGUILayout.LabelField("对象池类型：" + (PoolType)item.Key + " ----> 该类型对象池包含资源名字：" + value);
                 }
                 GUILayout.EndVertical();
 

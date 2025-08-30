@@ -39,7 +39,8 @@ namespace GameUI
         public int CheckInterval = 1000 * 10;//检测间隔时间(毫秒)
         private ResourcePackage _package;
         private Dictionary<string, Stack<GameObject>> _pool = new();//回收进池中的对象
-        private Dictionary<string, HashSet<GameObject>> _activePool = new();//活跃中的对象池
+        private Dictionary<int, HashSet<GameObject>> _activePoolByType = new();//活跃中的对象池
+
         private Dictionary<string,AssetHandleData> _handleDic = new();//资源句柄
         private Dictionary<int, Transform> _poolTypeDic = new();//对象池类型
         private Dictionary<int,HashSet<string>> _poolTypeNameDic = new();//每个对象池类型的名字，key ---> 对象池类型，value ---> 对象池名字
@@ -77,10 +78,10 @@ namespace GameUI
         public async UniTask<GameObject> GetObjectAsync(string assetName, PoolType poolType)
         {
             var obj = await LoadObjectAsync(assetName, poolType);
-            if (!_activePool.TryGetValue(assetName, out var hashSet))
+            if (!_activePoolByType.TryGetValue((int)poolType, out var hashSet))
             {
                 hashSet = new HashSet<GameObject>();
-                _activePool.Add(assetName, hashSet);
+                _activePoolByType.Add((int)poolType, hashSet);
             }
             hashSet.Add(obj);
             return obj;
@@ -95,10 +96,10 @@ namespace GameUI
         public GameObject GetObjectSync(string assetName, PoolType poolType)
         {
             var obj = LoadObjectSync(assetName, poolType);
-            if (!_activePool.TryGetValue(assetName, out var hashSet))
+            if (!_activePoolByType.TryGetValue((int)poolType,out var hashSet))
             {
                 hashSet = new HashSet<GameObject>();
-                _activePool.Add(assetName, hashSet);
+                _activePoolByType.Add((int)poolType,hashSet);
             }
             hashSet.Add(obj);
             return obj;
@@ -254,13 +255,10 @@ namespace GameUI
                 obj.transform.SetParent(parent,false);
                 obj.SetActive(false);
                 
-                //查找_activePool中对应的GameObject
-                if (_activePool.TryGetValue(obj.name, out var hashSet))
+                //查找_activePoolByType中对应的GameObject
+                if (_activePoolByType.TryGetValue((int)type, out var hashSet))
                 {
-                    if (hashSet.Contains(obj))
-                    {
-                        hashSet.Remove(obj);
-                    }
+                    hashSet.Remove(obj);
                 }
                 
                 var stack = GetPoolObjectStack(obj.name);
@@ -280,54 +278,45 @@ namespace GameUI
             var parent = GetPoolTypeTransform(type);
             if (parent != null)
             {
-                var nameList = GetPoolTypeNameList(type);
-                foreach (var name in nameList)
+                var hashSet = GetActivePoolObjectList((int)type);
+                foreach (var obj in hashSet)
                 {
-                    var list = GetActivePoolObjectList(name);
-                    var stack = GetPoolObjectStack(name);
-                    if (list is { Count: > 0 })
+                    obj.transform.SetParent(parent,false);
+                    obj.SetActive(false);
+                    var stack = GetPoolObjectStack(obj.name);
+                    if(stack != null)
                     {
-                        foreach (var item in list)
-                        {
-                            item.transform.SetParent(parent,false);
-                            item.SetActive(false);
-                        
-                            if(stack != null)
-                            {
-                                stack.Push(item);
-                            }
-                        }
-                        list.Clear();
+                        stack.Push(obj);
                     }
                 }
+                hashSet.Clear();
+                _activePoolByType.Remove((int)type);
             }
         }
         
         /// <summary>
-        /// 删除该类型下所有的对象
+        /// 删除该类型下所有的对象(包括活跃和非活跃的)
         /// </summary>
         /// <param name="type"></param>
         public void DestroyObjectPoolByType(PoolType type)
         {
+            // 销毁活跃的对象
+            var hashSet = GetActivePoolObjectList((int)type);
+            foreach (var obj in hashSet)
+            {
+                // 释放资源句柄
+                ReleaseAssetHandle(obj.name);
+                Object.Destroy(obj);
+            }
+            hashSet.Clear();
+            _activePoolByType.Remove((int)type);
+            
+            // 销毁池中的对象
             var list = GetPoolTypeNameList(type);
             if (list != null)
             {
                 foreach (var assetName in list)
                 {
-                    // 销毁活跃的对象
-                    var hashSet = GetActivePoolObjectList(assetName);
-                    if (hashSet != null)
-                    {
-                        foreach (var obj in hashSet)
-                        {
-                            // 释放资源句柄
-                            ReleaseAssetHandle(obj.name);
-                            Object.Destroy(obj);
-                        }
-                        hashSet.Clear();
-                    }
-                    
-                    // 销毁池中的对象
                     var stack = GetPoolObjectStack(assetName);
                     if (stack != null)
                     {
@@ -341,7 +330,6 @@ namespace GameUI
                     }
                     
                     _pool.Remove(assetName);
-                    _activePool.Remove(assetName);
                 }
                 
                 // 移除对象池类型中的名字列表
@@ -354,22 +342,23 @@ namespace GameUI
         /// <summary>
         public void DestroyAllObjectPool()
         {
+            for (int i = 0; i < (int)PoolType.Max; i++)
+            {
+                // 销毁活跃的对象
+                var hashSet = GetActivePoolObjectList(i);
+                foreach (var obj in hashSet)
+                {
+                    // 释放资源句柄
+                    ReleaseAssetHandle(obj.name);
+                    Object.Destroy(obj);
+                }
+                hashSet.Clear();
+                _activePoolByType.Remove(i);
+            }
+            
             foreach (var pool in _pool)
             {
                 var assetName = pool.Key;
-                // 销毁活跃的对象
-                var hashSet = GetActivePoolObjectList(assetName);
-                if (hashSet != null)
-                {
-                    foreach (var obj in hashSet)
-                    {
-                        // 释放资源句柄
-                        ReleaseAssetHandle(obj.name);
-                        Object.Destroy(obj);
-                    }
-                    hashSet.Clear();
-                }
-                
                 // 销毁池中的对象
                 var stack = GetPoolObjectStack(assetName);
                 if (stack != null)
@@ -386,7 +375,7 @@ namespace GameUI
 
             _handleDic.Clear();
             _pool.Clear();
-            _activePool.Clear();
+            _activePoolByType.Clear();
             _poolTypeNameDic.Clear();
         }
 
@@ -443,9 +432,9 @@ namespace GameUI
             return _pool.GetValueOrDefault(assetName);
         }
         
-        public HashSet<GameObject> GetActivePoolObjectList(string assetName)
+        public HashSet<GameObject> GetActivePoolObjectList(int poolType)
         {
-            return _activePool.GetValueOrDefault(assetName);
+            return _activePoolByType.GetValueOrDefault(poolType);
         }
 
         public Dictionary<string,AssetHandleData> GetAssetHandleDic()
@@ -458,9 +447,9 @@ namespace GameUI
             return _pool;
         }
         
-        public Dictionary<string, HashSet<GameObject>> GetActivePoolDic()
+        public Dictionary<int, HashSet<GameObject>> GetActivePoolDic()
         {
-            return _activePool;
+            return _activePoolByType;
         }
         
         public Dictionary<int, Transform> GetPoolTypeDic()

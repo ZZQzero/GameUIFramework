@@ -50,7 +50,9 @@ namespace GameUI
 			}
             
 			var tempPrefab = ItemList[data.TypeIndex];
-			if (!_poolType.TryGetValue(data.TypeIndex.ToString(), out var tempStack))
+			var obj = GameObjectPool.Instance.GetObjectSync(tempPrefab.name,PoolType.Normal);
+			return obj;
+			/*if (!_poolType.TryGetValue(data.TypeIndex.ToString(), out var tempStack))
 			{
 				tempStack = new Stack<GameObject>();
 				_poolType.Add(data.TypeIndex.ToString(),tempStack);
@@ -66,14 +68,14 @@ namespace GameUI
 				candidate = tempStack.Pop();
 				candidate.SetActive(true);
 				candidate.name = data.TypeIndex.ToString();
-			}
+			}*/
 
 			return candidate;
 		}
 
 		public override void ReturnObject(Transform trans)
 		{
-			Stack<GameObject> tempStack = null;
+			/*Stack<GameObject> tempStack = null;
 			trans.SetParent(transform, false);
 			trans.gameObject.SetActive(false);
 			if (_poolType.TryGetValue(trans.name, out tempStack))
@@ -85,7 +87,8 @@ namespace GameUI
 				tempStack = new Stack<GameObject>();
 				tempStack.Push(trans.gameObject);
 				_poolType.Add(trans.name,tempStack);
-			}
+			}*/
+			GameObjectPool.Instance.ReleaseObject(trans.gameObject,PoolType.Normal);
 		}
 
 		public override void ProvideData(Transform trans, int index)
