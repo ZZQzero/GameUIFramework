@@ -23,11 +23,15 @@ public class ResourcesUpdateManager
     }
     
     public async UniTask<bool> BeginDownload(ResourceDownloaderOperation downloader,
-        DownloaderOperation.OnDownloadError errorCallback,
-        DownloaderOperation.OnDownloadProgress progressCallback)
+        DownloaderOperation.DownloadFileBegin begin,
+        DownloaderOperation.DownloadUpdate update,
+        DownloaderOperation.DownloaderFinish finishCallback,
+        DownloaderOperation.DownloadError errorCallback)
     {
-        downloader.OnDownloadErrorCallback = errorCallback;
-        downloader.OnDownloadProgressCallback = progressCallback;
+        downloader.DownloadFileBeginCallback = begin;
+        downloader.DownloadUpdateCallback = update;
+        downloader.DownloadFinishCallback = finishCallback;
+        downloader.DownloadErrorCallback = errorCallback;
         downloader.BeginDownload();
         await downloader;
 

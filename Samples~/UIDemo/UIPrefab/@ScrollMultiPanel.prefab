@@ -88,7 +88,7 @@ GameObject:
   - component: {fileID: 5464659206002381073}
   - component: {fileID: 8822494895595983980}
   - component: {fileID: 6154641664247263705}
-  - component: {fileID: 2436407850841582889}
+  - component: {fileID: 1786224819372579296}
   m_Layer: 5
   m_Name: View
   m_TagString: Untagged
@@ -154,7 +154,7 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &2436407850841582889
+--- !u!114 &1786224819372579296
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -163,10 +163,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 7384388367702445232}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 31a19414c41e5ae4aae2af33fee712f6, type: 3}
+  m_Script: {fileID: 11500000, guid: 3312d7739989d2b4e91e6319e9a96d76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_ShowMaskGraphic: 1
+  m_Padding: {x: 0, y: 0, z: 0, w: 0}
+  m_Softness: {x: 0, y: 0}
 --- !u!1 &9132186422070210452
 GameObject:
   m_ObjectHideFlags: 0
@@ -178,8 +179,8 @@ GameObject:
   - component: {fileID: 6887504526206596782}
   - component: {fileID: 2273131377007647707}
   - component: {fileID: 7715421137099124847}
-  - component: {fileID: 4074311477671259507}
   - component: {fileID: -5481500892385554609}
+  - component: {fileID: 3276896778039823453}
   m_Layer: 5
   m_Name: '@ScrollMultiPanel'
   m_TagString: Untagged
@@ -245,7 +246,7 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &4074311477671259507
+--- !u!114 &-5481500892385554609
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -254,7 +255,26 @@ MonoBehaviour:
   m_GameObject: {fileID: 9132186422070210452}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6a56dae112724814383fb35008a3ce37, type: 3}
+  m_Script: {fileID: 11500000, guid: 4ee4a089e2ba9424fb2ccc652e379e66, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  GameUILayer: 1
+  GameUIMode: 0
+  ItemList:
+  - {fileID: 183744, guid: 82dd14f58de21ee4ba68a03576696109, type: 3}
+  - {fileID: 183744, guid: 1cf4de78e9d6f84469185b6eb13ab8af, type: 3}
+  - {fileID: 183744, guid: f5f35a557e54c1b428a563dcb6c8b0fc, type: 3}
+  - {fileID: 183744, guid: 0444d02a6372e3c41b26fd1cc50276e4, type: 3}
+--- !u!114 &3276896778039823453
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9132186422070210452}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a4ae502f584e1924d83adb15f18817dc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   totalCount: 0
@@ -277,22 +297,3 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
---- !u!114 &-5481500892385554609
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9132186422070210452}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4ee4a089e2ba9424fb2ccc652e379e66, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  GameUILayer: 1
-  GameUIMode: 0
-  ItemList:
-  - {fileID: 183744, guid: 82dd14f58de21ee4ba68a03576696109, type: 3}
-  - {fileID: 183744, guid: 1cf4de78e9d6f84469185b6eb13ab8af, type: 3}
-  - {fileID: 183744, guid: f5f35a557e54c1b428a563dcb6c8b0fc, type: 3}
-  - {fileID: 183744, guid: b33e30343e7c6fd42a06e6570e1d715c, type: 3}

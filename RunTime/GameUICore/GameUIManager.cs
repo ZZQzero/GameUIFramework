@@ -65,10 +65,13 @@ namespace GameUI
         
         public void Init()
         {
-            var prefab = Resources.Load<GameObject>("GameUIRoot");
-            var root = Object.Instantiate(prefab);
-            Object.DontDestroyOnLoad(root);
-            _uiRoot = root.GetComponent<GameUIRoot>();
+            if (_uiRoot == null)
+            {
+                var prefab = Resources.Load<GameObject>("GameUIRoot");
+                var root = Object.Instantiate(prefab);
+                Object.DontDestroyOnLoad(root);
+                _uiRoot = root.GetComponent<GameUIRoot>();
+            }
         }
           
         /// <summary>
@@ -220,7 +223,7 @@ namespace GameUI
         {
             if (_uiRoot != null)
             {
-                return _uiRoot.UICamera;
+                return _uiRoot.UICamera();
             }
 
             return null;

@@ -514,7 +514,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 35d842ba0aef05149909bc5c8216febb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  UICamera: {fileID: 0}
+  uiCamera: {fileID: 5952515687136767416}
+  canvasRoot: {fileID: 6939291105174404517}
 --- !u!1 &3615549574048909989
 GameObject:
   m_ObjectHideFlags: 0

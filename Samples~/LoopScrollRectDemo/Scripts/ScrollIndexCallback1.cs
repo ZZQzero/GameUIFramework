@@ -1,18 +1,18 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using TMPro;
 
 public class ScrollIndexCallback1 : MonoBehaviour 
 {
     public Image image;
-    public Text text;
+    public TextMeshProUGUI text;
 
-    void ScrollCellIndex (int idx) 
+    public void ScrollCellIndex (int idx,int data) 
     {
-        string name = "Cell " + idx.ToString ();
         if (text != null) 
         {
-            text.text = name;
+            text.text = data.ToString();
         }
         if (image != null)
         {

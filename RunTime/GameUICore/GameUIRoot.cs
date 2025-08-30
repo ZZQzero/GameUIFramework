@@ -2,12 +2,14 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace GameUI
 {
     public class GameUIRoot : MonoBehaviour
     {
-        [HideInInspector]public Camera UICamera;
+        [SerializeField] private Camera uiCamera;
+        [SerializeField] private Transform canvasRoot;
         
         private void Awake()
         {
@@ -16,13 +18,21 @@ namespace GameUI
 
         private void Init()
         {
-            UICamera = transform.Find("UICamera").GetComponent<Camera>();
-            var canvasRoot = transform.Find("CanvasRoot");
             for (int i = 0; i < canvasRoot.childCount; i++)
             {
                 var child = canvasRoot.GetChild(i);
                 GameUIManager.Instance.AddUILayer(i,child);
             }
+        }
+
+        public Camera UICamera()
+        {
+            return uiCamera;
+        }
+
+        public Transform CanvasRoot()
+        {
+            return canvasRoot;
         }
     }
 }

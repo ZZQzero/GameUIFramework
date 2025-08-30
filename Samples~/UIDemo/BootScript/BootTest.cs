@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using GameUI;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using YooAsset;
 
 /// <summary>
@@ -71,9 +72,10 @@ public class BootTest : MonoBehaviour
 
         if (mode == EPlayMode.EditorSimulateMode)
         {
-            var simulateBuildResult = EditorSimulateModeHelper.SimulateBuild(EDefaultBuildPipeline.BuiltinBuildPipeline, packageName);
+            var simulateBuildResult = EditorSimulateModeHelper.SimulateBuild(packageName);
+            var packageRoot = simulateBuildResult.PackageRootDirectory;
             var createParameters = new EditorSimulateModeParameters();
-            createParameters.EditorFileSystemParameters = FileSystemParameters.CreateDefaultEditorFileSystemParameters(simulateBuildResult);
+            createParameters.EditorFileSystemParameters = FileSystemParameters.CreateDefaultEditorFileSystemParameters(packageRoot);
             initializationOperation = package.InitializeAsync(createParameters);
         }
         else if (mode == EPlayMode.OfflinePlayMode)
@@ -119,6 +121,7 @@ public class BootTest : MonoBehaviour
             GameUIManager.Instance.SetPackage(package);
             RedDotManager.Instance.Init();
             GameUIManager.Instance.OpenUI(GameUIName.PatchPanel, package).Forget();
+            OpenScrollPanel();
         }
         else
         {
@@ -155,20 +158,20 @@ public class BootTest : MonoBehaviour
             return $"{hostServerIP}/{appVersion}";
 #endif
     }
+
+    private void OpenScrollPanel()
+    {
+        for (int i = 0; i < 100; i++)
+        {
+            GameLoopScrollManager.Instance.ScrollDataList.Add(i);
+        }
+
+        GameUIManager.Instance.OpenUI(GameUIName.ScrollPanel, GameLoopScrollManager.Instance.ScrollDataList);
+    }
     
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.N))
-        {
-            for (int i = 0; i < 100; i++)
-            {
-                GameLoopScrollManager.Instance.ScrollDataList.Add(i);
-            }
-
-            GameUIManager.Instance.OpenUI(GameUIName.ScrollPanel, GameLoopScrollManager.Instance.ScrollDataList);
-        }
-        
-        if (Input.GetKeyDown(KeyCode.M))
+        if (Keyboard.current.mKey.isPressed)
         {
             int index = 0;
             for (int i = 0; i < 100; i++)
@@ -213,18 +216,18 @@ public class BootTest : MonoBehaviour
             GameUIManager.Instance.OpenUI(GameUIName.ScrollMultiPanel, GameLoopScrollManager.Instance.ScrollMultiDataList);
         }
 
-        if (Input.GetKeyDown(KeyCode.K))
+        if (Keyboard.current.kKey.isPressed)
         {
             GameUIManager.Instance.CloseUI(GameUIName.ScrollPanel);
             GameUIManager.Instance.CloseUI(GameUIName.ScrollMultiPanel);
         }
         
-        if (Input.GetKeyDown(KeyCode.Alpha1))
+        if (Keyboard.current.digit0Key.isPressed)
         {
             RedDotManager.Instance.RedDotAddChanged(DotFuncType);
         }
         
-        if (Input.GetKeyDown(KeyCode.Alpha2))
+        if (Keyboard.current.digit2Key.isPressed)
         {
             RedDotManager.Instance.RedDotRemoveChanged(DotFuncType);
         }

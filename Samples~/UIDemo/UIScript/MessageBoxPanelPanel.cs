@@ -16,10 +16,7 @@ namespace GameUI
 		public override void OnInitUI()
 		{
 			base.OnInitUI();
-			#region Auto Generate Code
-			InitData();
-			#endregion Auto Generate Code
-			BtnokButton.onClick.AddListener(OnOkClick);
+			btnokButton.onClick.AddListener(OnOkClick);
 		}
 		public override void OnOpenUI()
 		{
@@ -27,7 +24,7 @@ namespace GameUI
 			if (Data != null && Data is MessageBoxData messageBoxData)
 			{
 				_messageBoxData = messageBoxData;
-				TxtcontentText.text = messageBoxData.Content;
+				txtcontentTextMeshProUGUI.text = messageBoxData.Content;
 			}
 		}
 		public override void OnCloseUI()

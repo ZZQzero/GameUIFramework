@@ -6,14 +6,9 @@ namespace GameUI
 	public partial class RedPanelPanel
 	{
 		#region Auto Generate Code
-		private UnityEngine.RectTransform RedPanelRectTransform;
-		private TMPro.TextMeshProUGUI TextTMPTextMeshProUGUI;
+		[SerializeField] private UnityEngine.RectTransform redPanelRectTransform;
+		[SerializeField] private TMPro.TextMeshProUGUI textTMPTextMeshProUGUI;
 
-		public void InitData()
-		{
-			RedPanelRectTransform = GetComponent<UnityEngine.RectTransform>();
-			TextTMPTextMeshProUGUI = transform.Find("@TextTMP").GetComponent<TMPro.TextMeshProUGUI>();
-		}
 		#endregion Auto Generate Code
 	}
 }

@@ -11,7 +11,6 @@ namespace GameUI
 		private RedDotData redDotData;
 		private void Awake()
 		{
-			InitData();
 			var data = RedDotManager.Instance.GetRedDotData(redType);
 			if (data != null)
 			{
@@ -38,7 +37,7 @@ namespace GameUI
 
 		private void OnRedDotChanged(ERedDotFuncType changeType, int count)
 		{
-			TextTMPTextMeshProUGUI.text = count.ToString();
+			textTMPTextMeshProUGUI.text = count.ToString();
 			if (count == 0)
 			{
 				gameObject.SetActive(false);
