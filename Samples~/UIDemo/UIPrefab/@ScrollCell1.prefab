@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 11487888}
   - component: {fileID: 11439716}
   - component: {fileID: 11464570}
-  - component: {fileID: 6253676276007034653}
+  - component: {fileID: 4499299399262443813}
   m_Layer: 5
   m_Name: '@ScrollCell1'
   m_TagString: Untagged
@@ -143,7 +143,7 @@ MonoBehaviour:
   m_FlexibleWidth: -1
   m_FlexibleHeight: -1
   m_LayoutPriority: 1
---- !u!114 &6253676276007034653
+--- !u!114 &4499299399262443813
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -152,11 +152,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 183744}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: aae79c5fe0add56479237307a95fbb7f, type: 3}
+  m_Script: {fileID: 11500000, guid: f859fbbf3a8c0d043b52db2d7eedd6c3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  image: {fileID: 11487888}
-  text: {fileID: 6653722542075472429}
+  GameUILayer: 1
+  GameUIMode: 0
+  scrollCell1Image: {fileID: 11487888}
+  text1TextMeshProUGUI: {fileID: 6653722542075472429}
 --- !u!1 &600693382645903733
 GameObject:
   m_ObjectHideFlags: 0

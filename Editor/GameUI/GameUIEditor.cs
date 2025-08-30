@@ -41,6 +41,7 @@ public class GameUIEditor : Editor
     {
         base.OnInspectorGUI();
         ShowBtn();
+        ShowError();
         if (_createFile == null)
         {
             return;
@@ -63,24 +64,6 @@ public class GameUIEditor : Editor
                 return;
             }
             ShowPrefabComponent();
-        }
-
-        switch (_errorType)
-        {
-            case ErrorType.None:
-                break;
-            case ErrorType.OptionError:
-                EditorGUILayout.HelpBox("请先完成或者取消上一项操作！！！", MessageType.Error);
-                break;
-            case ErrorType.PropertyError:
-                EditorGUILayout.HelpBox("有重复的属性名字！！！", MessageType.Error);
-                break;
-            case ErrorType.AssetError:
-                EditorGUILayout.HelpBox($"资源路劲获取失败！！！---> {target.name}", MessageType.Error);
-                break;
-            case ErrorType.SelectNodeError:
-                EditorGUILayout.HelpBox($"是否选中UI根节点，是否正确标记UI！！！---> {target.name}", MessageType.Error);
-                break;
         }
     }
 
@@ -112,6 +95,27 @@ public class GameUIEditor : Editor
                 Debug.LogError("生成代码成功");
             }
         };
+    }
+
+    private void ShowError()
+    {
+        switch (_errorType)
+        {
+            case ErrorType.None:
+                break;
+            case ErrorType.OptionError:
+                EditorGUILayout.HelpBox("请先完成或者取消上一项操作！！！", MessageType.Error);
+                break;
+            case ErrorType.PropertyError:
+                EditorGUILayout.HelpBox("有重复的属性名字！！！", MessageType.Error);
+                break;
+            case ErrorType.AssetError:
+                EditorGUILayout.HelpBox($"资源路劲获取失败！！！---> {target.name}", MessageType.Error);
+                break;
+            case ErrorType.SelectNodeError:
+                EditorGUILayout.HelpBox($"是否选中UI根节点，是否正确标记UI！！！---> {target.name}", MessageType.Error);
+                break;
+        }
     }
     
     private void ShowPrefabComponent()

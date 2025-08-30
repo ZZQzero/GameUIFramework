@@ -55,7 +55,7 @@ MonoBehaviour:
       AssetTags: 
       ActiveRuleName: EnableGroup
       Collectors:
-      - CollectPath: Assets/Samples/GameUI/1.0.0/Scene
+      - CollectPath: Assets/Samples/GameUI/1.0.0/UIDemo/Scene
         CollectorGUID: a8a589c88cb821745a409056fc7fd3af
         CollectorType: 0
         AddressRuleName: AddressByFileName

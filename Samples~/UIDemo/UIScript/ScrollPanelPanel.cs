@@ -59,7 +59,7 @@ namespace GameUI
 		{
 			base.ProvideData(trans, idx);
 			var data = dataList[idx];
-			trans.GetComponent<ScrollIndexCallback1>().ScrollCellIndex(idx,data);
+			trans.GetComponent<ScrollCell1Panel>().ScrollCellIndex(idx,data);
 		}
 	}
 }
