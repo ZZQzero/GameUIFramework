@@ -48,13 +48,13 @@ namespace GameUI
         {
         }
 
-        private Dictionary<int,Transform> _uiLayerDic = new();
-        private Dictionary<string, GameUIBase> _allOpenGameUIDic = new();
-        private Dictionary<string,GameUIBase> _allCloseGameUIDic = new();
-        private Dictionary<string,AssetHandle> _allAssetHandleDic = new();
-        private Dictionary<string,string> _loadingUIDic = new();//正在加载中的UI
-        private Dictionary<int,Stack<GameUIBase>> _reverseUIStack = new Dictionary<int,Stack<GameUIBase>>();
-        private List<string> _notCloseUIFilterList = new(5)
+        private readonly Dictionary<int,Transform> _uiLayerDic = new();
+        private readonly Dictionary<string, GameUIBase> _allOpenGameUIDic = new();
+        private readonly Dictionary<string,GameUIBase> _allCloseGameUIDic = new();
+        private readonly Dictionary<string,AssetHandle> _allAssetHandleDic = new();
+        private readonly HashSet<string> _loadingUIHash = new();//正在加载中的UI
+        private readonly Dictionary<int,Stack<GameUIBase>> _reverseUIStack = new Dictionary<int,Stack<GameUIBase>>();
+        private readonly List<string> _notCloseUIFilterList = new(5)
         {
             "TipsPanel",
         };
@@ -98,7 +98,7 @@ namespace GameUI
                 _package = YooAssets.GetPackage("DefaultPackage");
             }
             
-            if(!_loadingUIDic.TryAdd(uiName, uiName))
+            if(!_loadingUIHash.Add(uiName))
             {
                 Debug.LogError($"{uiName} is loading...");
                 return;
@@ -112,7 +112,7 @@ namespace GameUI
                     uiBase.gameObject.SetActive(true);
                     uiBase.transform.SetAsLastSibling();
                     _allCloseGameUIDic.Remove(uiName);
-                    _loadingUIDic.Remove(uiName);
+                    _loadingUIHash.Remove(uiName);
                     SetUIMode(uiBase);
                 }
                 return;
@@ -120,7 +120,7 @@ namespace GameUI
 
             if(_allOpenGameUIDic.TryGetValue(uiName, out uiBase))
             {
-                _loadingUIDic.Remove(uiName);
+                _loadingUIHash.Remove(uiName);
                 return;
             }
             await LoadUI(uiName, data);
@@ -259,12 +259,18 @@ namespace GameUI
             {
                 var handle = _package.LoadAssetAsync(uiName);
                 await handle;
+                if (handle == null)
+                {
+                    _loadingUIHash.Remove(uiName);
+                    Debug.LogError($"OpenUI: asset handle null for {uiName}");
+                    return;
+                }
                 _allAssetHandleDic.TryAdd(uiName, handle);
                 var panel = handle.InstantiateSync();
                 if (panel != null)
                 {
                     panel.name = uiName;
-                    panel.SetActive(true);
+                    panel.SetActive(false);
                     var uiBase = panel.GetComponent<GameUIBase>();
                     if (uiBase != null)
                     {
@@ -276,12 +282,13 @@ namespace GameUI
                         uiBase.OnOpenUI();
                     }
                     panel.transform.SetAsLastSibling();
-                    _loadingUIDic.Remove(uiName);
+                    panel.SetActive(true);
                 }
                 else
                 {
                     Debug.LogError($"panel is null: {uiName}");
                 }
+                _loadingUIHash.Remove(uiName);
             }
         }
         private void SetUILayer(GameUIBase uiBase)
