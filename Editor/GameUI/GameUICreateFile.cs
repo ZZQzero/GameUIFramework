@@ -53,9 +53,9 @@ namespace GameUI.Editor
         public string UIName;
         public readonly string StaticName = "GameUIName";
         public readonly string NameSpaceName = "GameUI";
-        public string ComponentCodeGeneratePath = Application.dataPath + "/Script/GameUI/UIScriptsGenerate/";
-        public string PanelCodeGeneratePath = Application.dataPath + "/Script/GameUI/UIScript/";
-        public string PanelNameCodeGeneratePath = Application.dataPath + "/Script/GameUI/UIScript/";
+        public string ComponentCodeGeneratePath = Application.dataPath + "/Scripts/HotfixView/GameUI/UIScriptsGenerate/";
+        public string PanelCodeGeneratePath = Application.dataPath + "/Scripts/HotfixView/GameUI/UIScript/";
+        public string PanelNameCodeGeneratePath = Application.dataPath + "/Scripts/ModelView/GameUI/UIScript/";
         public Type ScriptType = null;
         
         private Transform uiRoot;
@@ -539,32 +539,32 @@ namespace GameUI.Editor
 
         public void AddScriptToPrefab(GameObject prefab)
         {
-            var assembly = Assembly.Load("Assembly-CSharp");
+            /*var assembly = Assembly.Load("Assembly-CSharp");
             if (assembly == null)
             {
                 Debug.LogError($"无法找到程序集:");
                 return;
-            }
+            }*/
             
             //最耗时，但最全面
-            /*foreach (var assemblys in AppDomain.CurrentDomain.GetAssemblies())
+            foreach (var assemblys in AppDomain.CurrentDomain.GetAssemblies())
             {
                 foreach (var type in assemblys.GetTypes())
                 {
                     if (type.Name == PanelFileName.Replace(".cs", ""))
                     {
-                        scriptType = type;
+                        ScriptType = type;
                         break;
                     }
                 }
 
-                if (scriptType != null)
+                if (ScriptType != null)
                 {
                     break;
                 }
-            }*/
+            }
 
-            var types = assembly.GetTypes();
+            /*var types = assembly.GetTypes();
             foreach (var type in types)
             {
                 if (type.Name == PanelFileName.Replace(".cs", ""))
@@ -572,7 +572,7 @@ namespace GameUI.Editor
                     ScriptType = type;
                     break;
                 }
-            }
+            }*/
 
             if (ScriptType == null)
             {
