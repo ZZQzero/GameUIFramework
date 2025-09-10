@@ -100,9 +100,31 @@ public class FolderColorizer
         }
 
         // 绘制半透明背景
-        Color backgroundColor = color;
+        var startColor = color;
+        startColor.a = 0;
+        var endColor = color;
+        endColor.a = 0.5f;
+        //从上到下绘制
+        /*for (float y = backgroundRect.y; y < backgroundRect.y + backgroundRect.height; y += 1)
+        {
+            float t = (y - backgroundRect.y) / backgroundRect.height; // 计算当前行的插值因子
+            Color currentColor = Color.Lerp(startColor, endColor, t); // 插值计算当前颜色
+            EditorGUI.DrawRect(new Rect(backgroundRect.x, y, backgroundRect.width, 1), currentColor); // 绘制当前行
+        }*/
+
+        //从左到右绘制
+        for (float x = backgroundRect.x; x < backgroundRect.x + backgroundRect.width; x += 1)
+        {
+            float t = (x - backgroundRect.x) / backgroundRect.width; // 计算当前列的插值因子
+            Color currentColor = Color.Lerp(startColor, endColor, t); // 插值计算当前颜色
+            EditorGUI.DrawRect(new Rect(x, backgroundRect.y, 1, backgroundRect.height), currentColor); // 绘制当前列
+        }
+
+        
+        /*Color backgroundColor = color;
         backgroundColor.a = 0.4f;
-        EditorGUI.DrawRect(backgroundRect, backgroundColor);
+        Debug.LogError($"{backgroundRect.width}");
+        EditorGUI.DrawRect(backgroundRect, backgroundColor);*/
 
         // 绘制左侧竖线
         /*Rect lineRect = new Rect(rect.x, rect.y, 3, rect.height);
