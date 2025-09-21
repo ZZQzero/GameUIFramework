@@ -4,8 +4,9 @@ using UnityEditor;
 using GameUI;
 using GameUI.Editor;
 using UnityEditor.Callbacks;
+using UnityEngine.UIElements;
 
-[CustomEditor(typeof(GameObject))]
+[CustomEditor(typeof(GameUIPrefab))]
 public class GameUIEditor : Editor
 {
 
@@ -37,6 +38,7 @@ public class GameUIEditor : Editor
         AssetError,
         SelectNodeError,
     }
+    
     public override void OnInspectorGUI()
     {
         base.OnInspectorGUI();
@@ -54,7 +56,8 @@ public class GameUIEditor : Editor
         
         if (isCreateFile)
         {
-            if (_currentObj != null && _currentObj != ((GameObject)target))
+            var obj = (GameUIPrefab)target;
+            if (_currentObj != null && _currentObj != obj.gameObject)
             {
                 _createFile = null;
                 _currentObj = null;
@@ -66,6 +69,7 @@ public class GameUIEditor : Editor
             ShowPrefabComponent();
         }
     }
+
 
     [DidReloadScripts]
     private static void OnScriptUpdateLoaded()
@@ -314,7 +318,8 @@ public class GameUIEditor : Editor
                 return;
             }
             _fileStyle.normal.textColor = Color.green;
-            _prefabPath = AssetDatabase.GetAssetPath((GameObject)target);
+            var obj = (GameUIPrefab)target;
+            _prefabPath = AssetDatabase.GetAssetPath(obj.gameObject);
             if (string.IsNullOrEmpty(_prefabPath))
             {
                 _errorType = ErrorType.AssetError;
@@ -336,7 +341,8 @@ public class GameUIEditor : Editor
                 return;
             }
             _fileStyle.normal.textColor = Color.green;
-            _currentObj = (GameObject)target;
+            var obj = (GameUIPrefab)target;
+            _currentObj = obj.gameObject;
             _prefabPath = AssetDatabase.GetAssetPath(_currentObj);
             if (string.IsNullOrEmpty(_prefabPath))
             {
