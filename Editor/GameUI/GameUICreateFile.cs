@@ -42,6 +42,7 @@ namespace GameUI.Editor
             { "UnityEngine.Canvas", "UnityEngine.Canvas" },
             { "UnityEngine.UI.GraphicRaycaster", "UnityEngine.UI.GraphicRaycaster" },
             { "GameUI.GameUISetting", "GameUI.GameUISetting" },
+            { "GameUI.GameUIPrefab", "GameUI.GameUIPrefab" },
         };
 
         public List<ComponentData> ComponentDataList = new();
