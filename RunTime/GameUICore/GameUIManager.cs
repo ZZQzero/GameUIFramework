@@ -108,10 +108,12 @@ namespace GameUI
             {
                 if (uiBase != null)
                 {
+                    uiBase.Data = data;
                     uiBase.OnOpenUI();
                     uiBase.gameObject.SetActive(true);
                     uiBase.transform.SetAsLastSibling();
                     _allCloseGameUIDic.Remove(uiName);
+                    _allOpenGameUIDic.TryAdd(uiName, uiBase);
                     _loadingUIHash.Remove(uiName);
                     SetUIMode(uiBase);
                 }
@@ -120,6 +122,12 @@ namespace GameUI
 
             if(_allOpenGameUIDic.TryGetValue(uiName, out uiBase))
             {
+                // UI已经打开，更新Data并刷新
+                if (uiBase != null && data != null)
+                {
+                    uiBase.Data = data;
+                    uiBase.OnRefreshUI();
+                }
                 _loadingUIHash.Remove(uiName);
                 return;
             }
