@@ -108,14 +108,25 @@ namespace GameUI
             {
                 if (uiBase != null)
                 {
-                    uiBase.Data = data;
-                    uiBase.OnOpenUI();
-                    uiBase.gameObject.SetActive(true);
-                    uiBase.transform.SetAsLastSibling();
-                    _allCloseGameUIDic.Remove(uiName);
-                    _allOpenGameUIDic.TryAdd(uiName, uiBase);
-                    _loadingUIHash.Remove(uiName);
-                    SetUIMode(uiBase);
+                    try
+                    {
+                        uiBase.Data = data;
+                        SetUIMode(uiBase);
+                        _allCloseGameUIDic.Remove(uiName);
+                        uiBase.OnOpenUI();
+                        uiBase.gameObject.SetActive(true);
+                        uiBase.transform.SetAsLastSibling();
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogError($"OpenUI from close cache failed: {uiName}, Error: {e}");
+                        _allOpenGameUIDic.Remove(uiName);
+                    }
+                    finally
+                    {
+                        _loadingUIHash.Remove(uiName);
+                    }
+                   
                 }
                 return;
             }
@@ -172,10 +183,10 @@ namespace GameUI
         
         public void CloseAllUI()
         {
-            Dictionary<string,string> hideList = new Dictionary<string,string>();
+            List<string> hideList = new();
             foreach (var item in _allOpenGameUIDic)
             {
-                hideList.Add(item.Key,item.Key);
+                hideList.Add(item.Key);
             }
             ClearReverseStack();
             foreach (var item in _notCloseUIFilterList)
@@ -185,7 +196,7 @@ namespace GameUI
             
             foreach (var uiName in hideList)
             {
-                CloseUI(uiName.Key);
+                CloseUI(uiName);
             }
             hideList.Clear();
             _finallyOpenUIName = null;
@@ -214,6 +225,11 @@ namespace GameUI
                 hideList.Add(item.Key);
             }
             ClearReverseStack();
+            foreach (var item in _notCloseUIFilterList)
+            {
+                hideList.Remove(item);
+            }
+            
             foreach (var uiName in hideList)
             {
                 CloseAndDestroyUI(uiName);
@@ -265,38 +281,76 @@ namespace GameUI
         {
             if (_package != null)
             {
-                var handle = _package.LoadAssetAsync(uiName);
-                await handle;
-                if (handle == null)
+                AssetHandle handle = null;
+                GameObject panel = null;
+                GameUIBase uiBase = null;
+                bool addedToOpenDic = false;
+
+                try
                 {
-                    _loadingUIHash.Remove(uiName);
-                    Debug.LogError($"OpenUI: asset handle null for {uiName}");
-                    return;
-                }
-                _allAssetHandleDic.TryAdd(uiName, handle);
-                var panel = handle.InstantiateSync();
-                if (panel != null)
-                {
+                    handle = _package.LoadAssetAsync(uiName);
+                    await handle;
+                    if (handle == null || handle.Status != EOperationStatus.Succeed)
+                    {
+                        Debug.LogError($"LoadUI failed: {uiName}, Status: {handle?.Status}");
+                        return;
+                    }
+                    
+                    panel = handle.InstantiateSync();
+                    if (panel == null)
+                    {
+                        Debug.LogError($"InstantiateSync failed: {uiName}");
+                        handle.Release();
+                        return;
+                    }
+                    
                     panel.name = uiName;
                     panel.SetActive(false);
-                    var uiBase = panel.GetComponent<GameUIBase>();
-                    if (uiBase != null)
+                    uiBase = panel.GetComponent<GameUIBase>();
+                    if (uiBase == null)
                     {
-                        uiBase.Data = data;
-                        uiBase.UIName = uiName;
-                        uiBase.OnInitUI();
-                        SetUILayer(uiBase);
-                        SetUIMode(uiBase);
-                        uiBase.OnOpenUI();
+                        Debug.LogError($"GameUIBase component not found: {uiName}");
+                        Object.Destroy(panel);
+                        handle.Release();
+                        return;
                     }
+                    
+                    uiBase.Data = data;
+                    uiBase.UIName = uiName;
+                    uiBase.OnInitUI();
+                    SetUILayer(uiBase);
+                    SetUIMode(uiBase);
+                    addedToOpenDic = true;
+                    uiBase.OnOpenUI();
                     panel.transform.SetAsLastSibling();
                     panel.SetActive(true);
+                    _allAssetHandleDic.TryAdd(uiName, handle);
                 }
-                else
+                catch (Exception e)
                 {
-                    Debug.LogError($"panel is null: {uiName}");
+                    Debug.LogError($"LoadUI exception: {uiName}, Error: {e}");
+                    if (addedToOpenDic && uiBase != null)
+                    {
+                        _allOpenGameUIDic.Remove(uiName);
+                        _finallyOpenUIName = null;
+                    }
+                    
+                    // 清理 GameObject
+                    if (panel != null)
+                    {
+                        Object.Destroy(panel);
+                    }
+                
+                    // 清理资源句柄
+                    if (handle != null)
+                    {
+                        handle.Release();
+                    }
                 }
-                _loadingUIHash.Remove(uiName);
+                finally
+                {
+                    _loadingUIHash.Remove(uiName);
+                }
             }
         }
         private void SetUILayer(GameUIBase uiBase)
