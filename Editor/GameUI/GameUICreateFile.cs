@@ -43,6 +43,7 @@ namespace GameUI.Editor
         {
             { "UnityEngine.CanvasRenderer", "UnityEngine.CanvasRenderer" },
             { "UnityEngine.Canvas", "UnityEngine.Canvas" },
+            { "UnityEngine.UI.Mask", "UnityEngine.UI.Mask" },
             { "UnityEngine.UI.GraphicRaycaster", "UnityEngine.UI.GraphicRaycaster" },
             { "GameUI.GameUISetting", "GameUI.GameUISetting" },
             { "GameUI.GameUIPrefab", "GameUI.GameUIPrefab" },
@@ -96,6 +97,48 @@ namespace GameUI.Editor
             "TMPro.TextMeshProUGUI",
             "TMPro.TMP_InputField",
             "TMPro.TMP_Dropdown",
+        };
+        
+        // 组件类型的常见缩写映射表
+        private readonly Dictionary<string, string[]> _componentAbbreviations = new()
+        {
+            { "Button", new[] { "Btn", "Button", "button" } },
+            { "Image", new[] { "Img", "Image", "Pic", "Icon", "image" } },
+            { "Text", new[] { "Txt", "Text", "Label", "text" } },
+            { "InputField", new[] { "Input", "Field", "Edit" } },
+            { "Toggle", new[] { "Toggle", "Chk", "Check", "Switch" } },
+            { "Slider", new[] { "Slider", "Slide", "Bar" } },
+            { "ScrollRect", new[] { "Scroll", "ScrollView", "List" } },
+            { "Dropdown", new[] { "Dropdown", "Drop", "Select" } },
+            { "RawImage", new[] { "Raw", "RawImg" } },
+            { "TextMeshProUGUI", new[] { "Text", "Label", "Txt" ,"TMP"} },
+            { "TMP_InputField", new[] { "Input", "Field", "Edit" } },
+            { "TMP_Dropdown", new[] { "Dropdown", "Drop", "Select" } },
+            { "RectTransform", new[] { "Trans", "RectTrans" } },
+            { "Transform", new[] { "Trans" } },
+            { "GameObject", new[] { "Obj" } },
+        };
+
+        // 组件类型对应的简写后缀
+        private readonly Dictionary<string, string> _componentTypeToSuffix = new()
+        {
+            { "Button", "Btn" },
+            { "Image", "Img" },
+            { "Text", "Txt" },
+            { "InputField", "Input" },
+            { "Toggle", "Toggle" },
+            { "Slider", "Sld" },
+            { "ScrollRect", "Scroll" },
+            { "Dropdown", "Drop" },
+            { "RawImage", "Raw" },
+            { "TextMeshProUGUI", "Txt" },
+            { "TMP_InputField", "Input" },
+            { "TMP_Dropdown", "Drop" },
+            { "RectTransform", "RectTrans" },
+            { "Transform", "Trans" },
+            { "GameObject", "Obj" },
+            { "LayoutElement", "Element" },
+            { "LoopVerticalScrollRect", "VScroll" },
         };
 
         public void Init(Transform selectUI,bool isSelect = true)
@@ -324,7 +367,7 @@ namespace GameUI.Editor
                             var typeStr = components[j].GetType().ToString();
                             componentDataParams.ComponentType = typeStr;
                             var strs = typeStr.Split('.');
-                            // 使用智能命名生成属性名（自动去除冗余）
+                            // 使用智能命名生成属性名
                             componentDataParams.PropertyName = GenerateSmartPropertyName(child.name, strs[^1]);
                             componentDataParams.OriginalPropertyName = componentDataParams.PropertyName;
                             data.ComponentList.Add(componentDataParams);
@@ -341,8 +384,8 @@ namespace GameUI.Editor
                         componentDataParamsObj.IsSelect = isSelect;
                         var strs1 = typeStr1.Split('.');
                         // GameObject不需要去重，因为很少有节点名以GameObject结尾
-                        string cleanName1 = CleanNodeName(child.name);
-                        componentDataParamsObj.PropertyName = CapitalizeFirstLetter(cleanName1 + strs1[^1]);
+                        // 使用智能命名生成属性名
+                        componentDataParamsObj.PropertyName = GenerateSmartPropertyName(child.name, "GameObject");
                         componentDataParamsObj.OriginalPropertyName = componentDataParamsObj.PropertyName;
                         data.ComponentList.Add(componentDataParamsObj);
                         //-------------gameObject组件--------------
@@ -410,8 +453,8 @@ namespace GameUI.Editor
                 componentDataParamsObj.IsSelect = isSelect;
                 var strs1 = typeStr1.Split('.');
                 // GameObject不需要去重，因为很少有节点名以GameObject结尾
-                string cleanName1 = CleanNodeName(parent.name);
-                componentDataParamsObj.PropertyName = CapitalizeFirstLetter(cleanName1 + strs1[^1]);
+                // 使用智能命名生成属性名
+                componentDataParamsObj.PropertyName = GenerateSmartPropertyName(parent.name, "GameObject");
                 componentDataParamsObj.OriginalPropertyName = componentDataParamsObj.PropertyName;
                 data.ComponentList.Add(componentDataParamsObj);
                 //-------------gameObject组件--------------
@@ -717,23 +760,9 @@ namespace GameUI.Editor
 
             return dic.Values.Any(c => c.IsError);
         }
-
-        // 组件类型的常见缩写映射表
-        private readonly Dictionary<string, string[]> _componentAbbreviations = new()
-        {
-            { "Button", new[] { "Btn", "Button", "button" } },
-            { "Image", new[] { "Img", "Image", "Pic", "Icon", "image" } },
-            { "Text", new[] { "Txt", "Text", "Label", "text" } },
-            { "InputField", new[] { "Input", "Field", "Edit" } },
-            { "Toggle", new[] { "Toggle", "Chk", "Check", "Switch" } },
-            { "Slider", new[] { "Slider", "Slide", "Bar" } },
-            { "ScrollRect", new[] { "Scroll", "ScrollView", "List" } },
-            { "Dropdown", new[] { "Dropdown", "Drop", "Select" } },
-            { "RawImage", new[] { "Raw", "RawImg" } },
-        };
         
         /// <summary>
-        /// 智能生成属性名（去除冗余）
+        /// 智能生成属性名
         /// </summary>
         private string GenerateSmartPropertyName(string nodeName, string componentTypeName)
         {
@@ -762,7 +791,14 @@ namespace GameUI.Editor
                 cleanName = originalCleanName;
             }
             
-            return CapitalizeFirstLetter(cleanName + componentTypeName);
+            // 获取简写后缀
+            string suffix = componentTypeName;
+            if (_componentTypeToSuffix.TryGetValue(componentTypeName, out var shortSuffix))
+            {
+                suffix = shortSuffix;
+            }
+
+            return CapitalizeFirstLetter(cleanName + suffix);
         }
         
         //设置属性名首字母为小写

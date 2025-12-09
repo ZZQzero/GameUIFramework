@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
@@ -15,453 +14,568 @@ namespace GameUI
         Role,
         UI,
         
-        
-        Max //不能超过Max
+        Max // 不能超过Max
     }
+    
+    /// <summary>
+    /// GameObject对象池管理器
+    /// </summary>
     public class GameObjectPool
     {
         private static GameObjectPool _instance;
-        public static GameObjectPool Instance
-        {
-            get
-            {
-                if (_instance == null)
-                {
-                    _instance = new GameObjectPool();
-                }
-                return _instance;
-            }
-        }
-        
-        
-        
-        public int MaxPoolSize = 10;
-        public int CheckInterval = 1000 * 10;//检测间隔时间(毫秒)
-        private ResourcePackage _package;
-        private Dictionary<string, Stack<GameObject>> _pool = new();//回收进池中的对象
-        private Dictionary<int, HashSet<GameObject>> _activePoolByType = new();//活跃中的对象池
+        public static GameObjectPool Instance => _instance ??= new GameObjectPool();
 
-        private Dictionary<string,AssetHandleData> _handleDic = new();//资源句柄
-        private Dictionary<int, Transform> _poolTypeDic = new();//对象池类型
-        private Dictionary<int,HashSet<string>> _poolTypeNameDic = new();//每个对象池类型的名字，key ---> 对象池类型，value ---> 对象池名字
+        /// <summary>
+        /// 默认池容量限制
+        /// </summary>
+        public int DefaultMaxPoolSize = 10;
+
+        private ResourcePackage _package;
+
+        // ===== 核心数据结构 =====
+        private readonly Dictionary<(string, PoolType), Stack<GameObject>> _pool = new();
+        private readonly Dictionary<(string, PoolType), AssetHandle> _assetHandles = new();
+        private readonly Dictionary<(string, PoolType), int> _instanceCount = new();
+        private readonly Dictionary<(string, PoolType), int> _maxPoolSizeConfig = new();
         
-        public class AssetHandleData
-        {
-            public AssetHandle Handle;
-            public int Count;
-        }
+        // ===== 类型组织结构 =====
+        private readonly Dictionary<int, Transform> _poolTypeDic = new();
+        private readonly Dictionary<int, HashSet<GameObject>> _activePoolByType = new();
         
+        // ===== 延迟回收队列 =====
+        private readonly HashSet<GameObject> _pendingReleaseSet = new();
+        private readonly List<(GameObject obj, PoolType type)> _pendingReleaseQueue = new();
+        private bool _isProcessingRelease = false;
+
         public void Init()
         {
-            GameObject pool = new GameObject("GameObjectPool");
-            Object.DontDestroyOnLoad(pool);
-            for (int i = 0; i < (int)PoolType.Max; ++i)
+            var root = new GameObject("GameObjectPool");
+            Object.DontDestroyOnLoad(root);
+            for (int i = 0; i < (int)PoolType.Max; i++)
             {
-                GameObject child = new GameObject(((PoolType) i).ToString());
-                child.transform.SetParent(pool.transform);
-                _poolTypeDic.Add(i,child.transform);
+                var child = new GameObject(((PoolType)i).ToString());
+                child.transform.SetParent(root.transform);
+                _poolTypeDic[i] = child.transform;
             }
-            CheckObjectPoolCount().Forget();
         }
 
-        public void SetPackage(ResourcePackage package)
+        public void SetPackage(ResourcePackage package) => _package = package;
+
+        /// <summary>
+        /// 配置特定资源的池容量限制
+        /// </summary>
+        public void SetMaxPoolSize(string assetName, PoolType type, int maxSize)
         {
-            _package = package;
+            _maxPoolSizeConfig[(assetName, type)] = maxSize;
         }
 
         /// <summary>
-        /// 异步获取并记录活跃对象
+        /// 获取特定资源的池容量限制
         /// </summary>
-        /// <param name="assetName"></param>
-        /// <param name="poolType"></param>
-        /// <returns></returns>
+        private int GetMaxPoolSize(string assetName, PoolType type)
+        {
+            return _maxPoolSizeConfig.TryGetValue((assetName, type), out var size) ? size : DefaultMaxPoolSize;
+        }
+
+        /// <summary>
+        /// 获取资源句柄（异步）
+        /// </summary>
+        private AssetHandle GetAssetHandleAsync(string assetName, PoolType type)
+        {
+            var key = (assetName, type);
+            if (_assetHandles.TryGetValue(key, out var handle))
+                return handle;
+
+            handle = _package.LoadAssetAsync<GameObject>(assetName);
+            _assetHandles[key] = handle;
+            _instanceCount[key] = 0;
+            return handle;
+        }
+        
+        /// <summary>
+        /// 获取资源句柄（同步）
+        /// </summary>
+        private AssetHandle GetAssetHandleSync(string assetName, PoolType type)
+        {
+            var key = (assetName, type);
+            if (_assetHandles.TryGetValue(key, out var handle))
+                return handle;
+
+            handle = _package.LoadAssetSync<GameObject>(assetName);
+            _assetHandles[key] = handle;
+            _instanceCount[key] = 0;
+            return handle;
+        }
+
+        /// <summary>
+        /// 异步获取对象
+        /// </summary>
         public async UniTask<GameObject> GetObjectAsync(string assetName, PoolType poolType)
         {
             var obj = await LoadObjectAsync(assetName, poolType);
-            if (!_activePoolByType.TryGetValue((int)poolType, out var hashSet))
-            {
-                hashSet = new HashSet<GameObject>();
-                _activePoolByType.Add((int)poolType, hashSet);
-            }
-            hashSet.Add(obj);
+            AddToActive(obj, poolType);
             return obj;
         }
-        
+
         /// <summary>
-        /// 同步获取并记录活跃对象
+        /// 同步获取对象
         /// </summary>
-        /// <param name="assetName"></param>
-        /// <param name="poolType"></param>
-        /// <returns></returns>
         public GameObject GetObjectSync(string assetName, PoolType poolType)
         {
             var obj = LoadObjectSync(assetName, poolType);
-            if (!_activePoolByType.TryGetValue((int)poolType,out var hashSet))
-            {
-                hashSet = new HashSet<GameObject>();
-                _activePoolByType.Add((int)poolType,hashSet);
-            }
-            hashSet.Add(obj);
+            AddToActive(obj, poolType);
             return obj;
         }
 
         /// <summary>
-        /// 异步加载资源
+        /// 添加到活跃池
         /// </summary>
-        /// <param name="assetName"></param>
-        /// <returns></returns>
-        private async UniTask<GameObject> LoadObjectAsync(string assetName,PoolType poolType)
+        private void AddToActive(GameObject obj, PoolType type)
         {
-            AddPoolTypeNameList(assetName,poolType);
-            var stack = GetPoolObjectStack(assetName);
-            if (stack != null)
+            if (obj == null) return;
+            
+            if (!_activePoolByType.TryGetValue((int)type, out var set))
             {
-                if (stack.Count > 0)
-                {
-                    var obj = stack.Pop();
-                    return obj;
-                }
-                return await LoadAssetAsync(assetName,poolType);
+                set = new HashSet<GameObject>();
+                _activePoolByType[(int)type] = set;
             }
-            stack = new Stack<GameObject>();
-            _pool.Add(assetName,stack);
-            return await LoadAssetAsync(assetName,poolType);
-        }
-        
-        /// <summary>
-        /// 异步加载资源
-        /// </summary>
-        /// <param name="assetName"></param>
-        /// <returns></returns>
-        private async UniTask<GameObject> LoadAssetAsync(string assetName,PoolType poolType)
-        {
-            InstantiateOperation operation;
-            var handleData = GetAssetHandle(assetName);
-            if (handleData != null)
-            {
-                handleData.Count++;
-                operation = handleData.Handle.InstantiateAsync();
-            }
-            else
-            {
-                var assetHandle = _package.LoadAssetAsync<GameObject>(assetName);
-                operation = assetHandle.InstantiateAsync();
-                AddAssetHandle(assetName, assetHandle, poolType);
-            }
-            await operation;
-            var obj = operation.Result;
-            obj.name = assetName;
-            obj.SetActive(true);
-            return obj;
+            set.Add(obj);
         }
 
         /// <summary>
-        /// 同步加载资源
+        /// 异步加载对象
         /// </summary>
-        /// <returns></returns>
-        private GameObject LoadObjectSync(string assetName,PoolType poolType)
+        private async UniTask<GameObject> LoadObjectAsync(string assetName, PoolType poolType)
         {
-            AddPoolTypeNameList(assetName,poolType);
-            var stack = GetPoolObjectStack(assetName);
-            if (stack != null)
+            var key = (assetName, poolType);
+            
+            // 1. 热复用：从延迟回收队列中查找
+            if (_pendingReleaseSet.Count > 0)
             {
-                if (stack.Count > 0)
+                for (int i = _pendingReleaseQueue.Count - 1; i >= 0; i--)
                 {
-                    var obj = stack.Pop();
-                    obj.SetActive(true);
-                    return obj;
+                    var (obj, type) = _pendingReleaseQueue[i];
+                    if (obj != null && obj.name == assetName && type == poolType)
+                    {
+                        _pendingReleaseQueue.RemoveAt(i);
+                        _pendingReleaseSet.Remove(obj);
+                        return obj;
+                    }
                 }
-
-                return  LoadAssetSync(assetName,poolType);
             }
-            stack = new Stack<GameObject>();
-            _pool.Add(assetName,stack);
-            return LoadAssetSync(assetName,poolType);
+
+            // 2. 常驻池复用
+            if (_pool.TryGetValue(key, out var stack) && stack.Count > 0)
+            {
+                var obj = stack.Pop();
+                obj.SetActive(true);
+                return obj;
+            }
+
+            // 3. 真正实例化（异步路径）
+            var handle = GetAssetHandleAsync(assetName, poolType);
+            var op = handle.InstantiateAsync();
+            await op;
+
+            var go = op.Result;
+            if (go == null)
+            {
+                Debug.LogError($"[GameObjectPool] 异步实例化失败：{assetName} (PoolType: {poolType})");
+                return null;
+            }
+            
+            go.name = assetName;
+            go.SetActive(true);
+
+            _instanceCount[key]++;
+            return go;
         }
-        
+
         /// <summary>
-        /// 同步加载资源
+        /// 同步加载对象
         /// </summary>
-        /// <param name="assetName"></param>
-        /// <returns></returns>
-        private GameObject LoadAssetSync(string assetName,PoolType poolType)
+        private GameObject LoadObjectSync(string assetName, PoolType poolType)
         {
-            GameObject obj;
-            var handleData = GetAssetHandle(assetName);
-            if (handleData != null)
+            var key = (assetName, poolType);
+            
+            // 1. 热复用
+            if (_pendingReleaseSet.Count > 0)
             {
-                handleData.Count++;
-                obj = handleData.Handle.InstantiateSync();
-            }
-            else
-            {
-                var assetHandle = _package.LoadAssetSync<GameObject>(assetName);
-                obj = assetHandle.InstantiateSync();
-                AddAssetHandle(assetName,assetHandle,poolType);
-            }
-            obj.name = assetName;
-            obj.SetActive(true);
-            return obj;
-        }
-
-        private void AddPoolTypeNameList(string assetName,PoolType poolType)
-        {
-            var nameList = GetPoolTypeNameList(poolType);
-            if(nameList != null)
-            {
-                nameList.Add(assetName);
-            }
-            else
-            {
-                nameList = new HashSet<string>();
-                nameList.Add(assetName);
-                _poolTypeNameDic.Add((int)poolType,nameList);
-            }
-        }
-
-        private void AddAssetHandle(string assetName, AssetHandle handle, PoolType type)
-        {
-            AssetHandleData data = new AssetHandleData();
-            data.Count++;
-            data.Handle = handle;
-            _handleDic.Add(assetName, data);
-        }
-
-        private void ReleaseAssetHandle(string assetName)
-        {
-            var handleData = GetAssetHandle(assetName);
-            if (handleData != null)
-            {
-                handleData.Count--;
-                if (handleData.Count <= 0)
+                for (int i = _pendingReleaseQueue.Count - 1; i >= 0; i--)
                 {
-                    handleData.Count = 0;
-                    handleData.Handle.Release();
-                    _handleDic.Remove(assetName);
+                    var (obj, type) = _pendingReleaseQueue[i];
+                    if (obj != null && obj.name == assetName && type == poolType)
+                    {
+                        _pendingReleaseQueue.RemoveAt(i);
+                        _pendingReleaseSet.Remove(obj);
+                        return obj;
+                    }
                 }
             }
+            
+            // 2. 常驻池
+            if (_pool.TryGetValue(key, out var stack) && stack.Count > 0)
+            {
+                var obj = stack.Pop();
+                obj.SetActive(true);
+                return obj;
+            }
+            
+            // 3. 实例化（同步路径）
+            var handle = GetAssetHandleSync(assetName, poolType);
+            var go = handle.InstantiateSync();
+            
+            if (go == null)
+            {
+                Debug.LogError($"[GameObjectPool] 同步实例化失败：{assetName} (PoolType: {poolType})");
+                return null;
+            }
+            
+            go.name = assetName;
+            go.SetActive(true);
+            _instanceCount[key]++;
+            return go;
         }
-        
+
         /// <summary>
         /// 回收对象
         /// </summary>
-        /// <param name="obj"></param>
-        /// <param name="type"></param>
-        public void ReleaseObject(GameObject obj,PoolType type)
+        public void ReleaseObject(GameObject obj, PoolType type)
         {
-            var parent = GetPoolTypeTransform(type);
-            if (parent != null)
+            if (obj == null || _pendingReleaseSet.Contains(obj)) 
+                return;
+
+            bool shouldDelay = type == PoolType.UI ||
+                               UnityEngine.UI.CanvasUpdateRegistry.IsRebuildingLayout() ||
+                               UnityEngine.UI.CanvasUpdateRegistry.IsRebuildingGraphics();
+
+            if (shouldDelay)
             {
-                obj.transform.SetParent(parent,false);
-                obj.SetActive(false);
-                
-                //查找_activePoolByType中对应的GameObject
-                if (_activePoolByType.TryGetValue((int)type, out var hashSet))
+                _pendingReleaseSet.Add(obj);
+                _pendingReleaseQueue.Add((obj, type));
+                if (!_isProcessingRelease)
                 {
-                    hashSet.Remove(obj);
+                    _isProcessingRelease = true;
+                    ProcessPendingReleaseAsync().Forget();
                 }
-                
-                var stack = GetPoolObjectStack(obj.name);
-                if(stack != null)
-                {
-                    stack.Push(obj);
-                }
+            }
+            else
+            {
+                DoRelease(obj, type);
             }
         }
 
         /// <summary>
-        /// 回收改类型下所有的对象
+        /// 实际执行回收操作
         /// </summary>
-        /// <param name="type"></param>
+        private void DoRelease(GameObject obj, PoolType type)
+        {
+            if (obj == null) return;
+            
+            // 从活跃池移除
+            _activePoolByType.GetValueOrDefault((int)type)?.Remove(obj);
+            
+            obj.SetActive(false);
+            obj.transform.SetParent(_poolTypeDic[(int)type], false);
+
+            var key = (obj.name, type);
+            if (!_pool.TryGetValue(key, out var stack))
+            {
+                stack = new Stack<GameObject>();
+                _pool[key] = stack;
+            }
+            
+            stack.Push(obj);
+
+            // 实时裁剪：超量立即销毁
+            int maxSize = GetMaxPoolSize(obj.name, type);
+            if (stack.Count > maxSize)
+            {
+                var excess = stack.Pop();
+                DestroyInstance(excess.name, type);
+                Object.Destroy(excess);
+            }
+        }
+
+        /// <summary>
+        /// 处理延迟回收队列
+        /// </summary>
+        private async UniTaskVoid ProcessPendingReleaseAsync()
+        {
+            await UniTask.Yield(PlayerLoopTiming.LastPostLateUpdate);
+
+            foreach (var (obj, type) in _pendingReleaseQueue)
+            {
+                if (obj == null || !_pendingReleaseSet.Contains(obj))
+                    continue;
+
+                // 对象仍在活跃池中才执行回收
+                if (_activePoolByType.GetValueOrDefault((int)type)?.Contains(obj) == true)
+                {
+                    DoRelease(obj, type);
+                }
+            }
+
+            _pendingReleaseQueue.Clear();
+            _pendingReleaseSet.Clear();
+            _isProcessingRelease = false;
+        }
+
+        /// <summary>
+        /// 销毁实例并更新引用计数
+        /// </summary>
+        private void DestroyInstance(string assetName, PoolType type)
+        {
+            var key = (assetName, type);
+            
+            if (!_instanceCount.TryGetValue(key, out int count))
+                return;
+
+            _instanceCount[key] = --count;
+
+            // 当所有实例都被销毁时，释放资源句柄
+            if (count <= 0)
+            {
+                if (_assetHandles.TryGetValue(key, out var handle))
+                {
+                    handle.Release();
+                    _assetHandles.Remove(key);
+                }
+                _instanceCount.Remove(key);
+                _pool.Remove(key);
+            }
+        }
+
+        /// <summary>
+        /// 回收该类型下所有的活跃对象
+        /// </summary>
         public void ReleaseObjectByPoolType(PoolType type)
         {
-            var parent = GetPoolTypeTransform(type);
-            if (parent != null)
+            var parent = _poolTypeDic.GetValueOrDefault((int)type);
+            if (parent == null) return;
+
+            var hashSet = _activePoolByType.GetValueOrDefault((int)type);
+            if (hashSet == null || hashSet.Count == 0) return;
+
+            // 从待回收队列中移除该类型的对象
+            for (int i = _pendingReleaseQueue.Count - 1; i >= 0; i--)
             {
-                var hashSet = GetActivePoolObjectList((int)type);
-                foreach (var obj in hashSet)
+                var (obj, queueType) = _pendingReleaseQueue[i];
+                if (queueType == type && obj != null)
                 {
-                    obj.transform.SetParent(parent,false);
-                    obj.SetActive(false);
-                    var stack = GetPoolObjectStack(obj.name);
-                    if(stack != null)
-                    {
-                        stack.Push(obj);
-                    }
+                    _pendingReleaseQueue.RemoveAt(i);
+                    _pendingReleaseSet.Remove(obj);
                 }
-                hashSet.Clear();
-                _activePoolByType.Remove((int)type);
             }
-        }
-        
-        /// <summary>
-        /// 删除该类型下所有的对象(包括活跃和非活跃的)
-        /// </summary>
-        /// <param name="type"></param>
-        public void DestroyObjectPoolByType(PoolType type)
-        {
-            // 销毁活跃的对象
-            var hashSet = GetActivePoolObjectList((int)type);
+
+            // 批量回收活跃对象
             foreach (var obj in hashSet)
             {
-                // 释放资源句柄
-                ReleaseAssetHandle(obj.name);
-                Object.Destroy(obj);
-            }
-            hashSet.Clear();
-            _activePoolByType.Remove((int)type);
-            
-            // 销毁池中的对象
-            var list = GetPoolTypeNameList(type);
-            if (list != null)
-            {
-                foreach (var assetName in list)
+                if (obj == null) continue;
+
+                obj.SetActive(false);
+                obj.transform.SetParent(parent, false);
+
+                var key = (obj.name, type);
+                if (!_pool.TryGetValue(key, out var stack))
                 {
-                    var stack = GetPoolObjectStack(assetName);
-                    if (stack != null)
-                    {
-                        foreach (var obj in stack)
-                        {
-                            // 释放资源句柄
-                            ReleaseAssetHandle(obj.name);
-                            Object.Destroy(obj);
-                        }
-                        stack.Clear();
-                    }
-                    
-                    _pool.Remove(assetName);
+                    stack = new Stack<GameObject>();
+                    _pool[key] = stack;
                 }
                 
-                // 移除对象池类型中的名字列表
-                _poolTypeNameDic.Remove((int)type);
-            }
-        }
-        
-        /// <summary>
-        /// 销毁对象池所有对象
-        /// <summary>
-        public void DestroyAllObjectPool()
-        {
-            for (int i = 0; i < (int)PoolType.Max; i++)
-            {
-                // 销毁活跃的对象
-                var hashSet = GetActivePoolObjectList(i);
-                foreach (var obj in hashSet)
+                stack.Push(obj);
+
+                // 裁剪检查
+                int maxSize = GetMaxPoolSize(obj.name, type);
+                while (stack.Count > maxSize)
                 {
-                    // 释放资源句柄
-                    ReleaseAssetHandle(obj.name);
+                    var excess = stack.Pop();
+                    DestroyInstance(obj.name, type);
+                    Object.Destroy(excess);
+                }
+            }
+
+            hashSet.Clear();
+            _activePoolByType.Remove((int)type);
+        }
+
+        /// <summary>
+        /// 销毁该类型下所有的对象
+        /// </summary>
+        public void DestroyObjectPoolByType(PoolType type)
+        {
+            // 清理待回收队列
+            var activeSet = _activePoolByType.GetValueOrDefault((int)type);
+            for (int i = _pendingReleaseQueue.Count - 1; i >= 0; i--)
+            {
+                var (obj, queueType) = _pendingReleaseQueue[i];
+                if (queueType == type)
+                {
+                    _pendingReleaseQueue.RemoveAt(i);
+                    if (obj != null)
+                    {
+                        _pendingReleaseSet.Remove(obj);
+                        activeSet?.Remove(obj);  // 从活跃池移除
+                        DestroyInstance(obj.name, type);
+                        Object.Destroy(obj);
+                    }
+                }
+            }
+
+            // 销毁剩余的活跃对象
+            if (activeSet != null)
+            {
+                foreach (var obj in activeSet)
+                {
+                    if (obj == null) continue;
+                    
+                    DestroyInstance(obj.name, type);
                     Object.Destroy(obj);
                 }
-                hashSet.Clear();
-                _activePoolByType.Remove(i);
+                activeSet.Clear();
+                _activePoolByType.Remove((int)type);
+            }
+
+            // 销毁池中的对象
+            var keysToRemove = new List<(string, PoolType)>();
+            foreach (var kvp in _pool)
+            {
+                var (assetName, poolType) = kvp.Key;
+                if (poolType == type)
+                {
+                    foreach (var obj in kvp.Value)
+                    {
+                        if (obj != null)
+                        {
+                            DestroyInstance(assetName, poolType);
+                            Object.Destroy(obj);
+                        }
+                    }
+                    kvp.Value.Clear();
+                    keysToRemove.Add(kvp.Key);
+                }
+            }
+
+            // 清理空池和资源句柄
+            foreach (var key in keysToRemove)
+            {
+                _pool.Remove(key);
+                
+                if (_assetHandles.TryGetValue(key, out var handle))
+                {
+                    handle.Release();
+                    _assetHandles.Remove(key);
+                }
+                _instanceCount.Remove(key);
+            }
+        }
+
+        /// <summary>
+        /// 销毁对象池所有对象
+        /// </summary>
+        public void DestroyAllObjectPool()
+        {
+            // 销毁待回收队列中的对象
+            foreach (var (obj, _) in _pendingReleaseQueue)
+            {
+                if (obj != null)
+                {
+                    Object.Destroy(obj);
+                }
+            }
+            _pendingReleaseQueue.Clear();
+            _pendingReleaseSet.Clear();
+            _isProcessingRelease = false;
+
+            // 销毁所有活跃对象
+            foreach (var kvp in _activePoolByType)
+            {
+                foreach (var obj in kvp.Value)
+                {
+                    if (obj != null)
+                        Object.Destroy(obj);
+                }
+                kvp.Value.Clear();
+            }
+            _activePoolByType.Clear();
+
+            // 销毁池中的对象
+            foreach (var kvp in _pool)
+            {
+                foreach (var obj in kvp.Value)
+                {
+                    if (obj != null)
+                        Object.Destroy(obj);
+                }
+                kvp.Value.Clear();
+            }
+            _pool.Clear();
+
+            // 释放所有资源句柄
+            foreach (var kvp in _assetHandles)
+            {
+                kvp.Value?.Release();
+            }
+            _assetHandles.Clear();
+            _instanceCount.Clear();
+        }
+
+        // ===== 调试和查询接口 =====
+        
+        public Dictionary<(string, PoolType), Stack<GameObject>> GetPoolDic() => _pool;
+        public Dictionary<int, HashSet<GameObject>> GetActivePoolDic() => _activePoolByType;
+        public Dictionary<int, Transform> GetPoolTypeDic() => _poolTypeDic;
+        public Dictionary<(string, PoolType), AssetHandle> GetAssetHandleDic() => _assetHandles;
+        public Dictionary<(string, PoolType), int> GetInstanceCountDic() => _instanceCount;
+        
+        /// <summary>
+        /// 获取按类型分组的资源名称字典（用于编辑器可视化）
+        /// </summary>
+        public Dictionary<PoolType, HashSet<string>> GetPoolTypeNameDic()
+        {
+            var result = new Dictionary<PoolType, HashSet<string>>();
+            
+            // 从池中收集
+            foreach (var ((assetName, type), _) in _pool)
+            {
+                if (!result.TryGetValue(type, out var set))
+                {
+                    set = new HashSet<string>();
+                    result[type] = set;
+                }
+                set.Add(assetName);
             }
             
-            foreach (var pool in _pool)
+            // 从活跃对象中补充（可能有未回收的对象）
+            foreach (var kvp in _activePoolByType)
             {
-                var assetName = pool.Key;
-                // 销毁池中的对象
-                var stack = GetPoolObjectStack(assetName);
-                if (stack != null)
+                var type = (PoolType)kvp.Key;
+                if (!result.TryGetValue(type, out var set))
                 {
-                    foreach (var obj in stack)
-                    {
-                        // 释放资源句柄
-                        ReleaseAssetHandle(obj.name);
-                        Object.Destroy(obj);
-                    }
-                    stack.Clear();
+                    set = new HashSet<string>();
+                    result[type] = set;
+                }
+                
+                foreach (var obj in kvp.Value)
+                {
+                    if (obj != null)
+                        set.Add(obj.name);
                 }
             }
-
-            _handleDic.Clear();
-            _pool.Clear();
-            _activePoolByType.Clear();
-            _poolTypeNameDic.Clear();
-        }
-
-        /// <summary>
-        /// 当前对象池中的对象数量超过最大限制时，销毁多余的对象
-        /// </summary>
-        /// <returns></returns>
-        private void DestroyObjectPoolByMaxSize()
-        {
-            foreach (var pool in _pool)
-            {
-                if (pool.Value != null)
-                {
-                    while (pool.Value.Count > MaxPoolSize)
-                    {
-                        var obj = pool.Value.Pop();
-                        ReleaseAssetHandle(obj.name);
-                        Object.Destroy(obj);
-                    }
-                }
-            }
+            
+            return result;
         }
         
         /// <summary>
-        /// 定时检测对象池中的对象数量，销毁多余的对象
+        /// 获取指定资源的统计信息
         /// </summary>
-        /// <returns></returns>
-        private async UniTask CheckObjectPoolCount()
+        public (int pooled, int active, int total) GetStats(string assetName, PoolType type)
         {
-            while (true)
-            {
-                await UniTask.Delay(CheckInterval);
-                DestroyObjectPoolByMaxSize();
-            }
+            var key = (assetName, type);
+            int pooled = _pool.TryGetValue(key, out var stack) ? stack.Count : 0;
+            int total = _instanceCount.TryGetValue(key, out var count) ? count : 0;
+            int active = total - pooled;
+            return (pooled, active, total);
         }
-        
-        public AssetHandleData GetAssetHandle(string assetName)
-        {
-            return _handleDic.GetValueOrDefault(assetName);
-        }
-        
-        public Transform GetPoolTypeTransform(PoolType type)
-        {
-            return _poolTypeDic[(int)type];
-        }
-        
-        public HashSet<string> GetPoolTypeNameList(PoolType type)
-        {
-            return _poolTypeNameDic.GetValueOrDefault((int)type);
-        }
-        
-        public Stack<GameObject> GetPoolObjectStack(string assetName)
-        {
-            return _pool.GetValueOrDefault(assetName);
-        }
-        
-        public HashSet<GameObject> GetActivePoolObjectList(int poolType)
-        {
-            return _activePoolByType.GetValueOrDefault(poolType);
-        }
-
-        public Dictionary<string,AssetHandleData> GetAssetHandleDic()
-        {
-            return _handleDic;
-        }
-
-        public Dictionary<string, Stack<GameObject>> GetPoolDic()
-        {
-            return _pool;
-        }
-        
-        public Dictionary<int, HashSet<GameObject>> GetActivePoolDic()
-        {
-            return _activePoolByType;
-        }
-        
-        public Dictionary<int, Transform> GetPoolTypeDic()
-        {
-            return _poolTypeDic;
-        }
-        
-        public Dictionary<int,HashSet<string>> GetPoolTypeNameDic()
-        {
-            return _poolTypeNameDic;
-        }
-
     }
-
 }

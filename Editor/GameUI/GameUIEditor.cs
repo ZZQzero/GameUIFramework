@@ -15,6 +15,12 @@ public class GameUIEditor : Editor
     public static string ClassNameKey = "ClassNameKey";
     public static string AutoAddCSKey = "AutoAddCSKey";
     public static string PropertyNamesKey = "PropertyNamesKey"; // 保存用户修改的属性名
+    
+    // 全局路径配置 Key
+    public static string GlobalComponentPathKey = "GlobalComponentPathKey";
+    public static string GlobalPanelPathKey = "GlobalPanelPathKey";
+    public static string GlobalPanelNamePathKey = "GlobalPanelNamePathKey";
+    public static string GlobalItemPathKey = "GlobalItemPathKey";
 
     private static string _prefabPath;
     private string fileStr;
@@ -101,6 +107,9 @@ public class GameUIEditor : Editor
                     _createFile =  new GameUICreateFile();
                 }
                 _createFile.Init(_currentObj.transform);
+                // 加载保存的路径
+                LoadSavedPaths(_createFile);
+                
                 // 恢复用户修改的属性名
                 RestorePropertyNameMappingInternal(_createFile, _currentObj);
                 _createFile.AddScriptToPrefab(_currentObj);
@@ -151,12 +160,14 @@ public class GameUIEditor : Editor
             return;
         }
         _createFile.Init(_currentObj.transform);
+        LoadSavedPaths(_createFile);
+        
         fileStr = _createFile.CheckPropertyExists();
         bool isItemPrefab = _createFile.IsItemPrefab;
         
         
         _fileStyle.normal.textColor = Color.green;
-        GUILayout.BeginVertical();
+        EditorGUILayout.BeginVertical();
 
         // 显示统计信息
         int totalNodes = _createFile.ComponentDataList?.Count ?? 0;
@@ -184,7 +195,8 @@ public class GameUIEditor : Editor
         {
             EditorGUILayout.LabelField("生成模式：Cell/Item (MonoBehaviour)", EditorStyles.boldLabel);
             EditorGUILayout.Space(2);
-            EditorGUILayout.LabelField("脚本生成路径：", _createFile.ComponentCodeGeneratePath, _fileStyle);
+            DrawPathSelection("脚本生成路径：", _createFile.ComponentCodeGeneratePath, p => _createFile.ComponentCodeGeneratePath = p);
+            //EditorGUILayout.LabelField("脚本生成路径：", _createFile.ComponentCodeGeneratePath, _fileStyle);
             EditorGUILayout.LabelField("脚本名字：", _createFile.ComponentFileName, _fileStyle);
             EditorGUILayout.Space(10);
         }
@@ -192,13 +204,16 @@ public class GameUIEditor : Editor
         {
             EditorGUILayout.LabelField("生成模式：面板 (GameUIBase)", EditorStyles.boldLabel);
             EditorGUILayout.Space(2);
-            EditorGUILayout.LabelField("代码生成路径1：", _createFile.ComponentCodeGeneratePath, _fileStyle);
+            DrawPathSelection("代码生成路径1：", _createFile.ComponentCodeGeneratePath, p => _createFile.ComponentCodeGeneratePath = p);
+            //EditorGUILayout.LabelField("代码生成路径1：", _createFile.ComponentCodeGeneratePath, _fileStyle);
             EditorGUILayout.LabelField("脚本名字1：", _createFile.ComponentFileName, _fileStyle);
             EditorGUILayout.Space(10);
-            EditorGUILayout.LabelField("代码生成路径2：", _createFile.PanelCodeGeneratePath, _fileStyle);
+            DrawPathSelection("代码生成路径2：", _createFile.PanelCodeGeneratePath, p => _createFile.PanelCodeGeneratePath = p);
+            //EditorGUILayout.LabelField("代码生成路径2：", _createFile.PanelCodeGeneratePath, _fileStyle);
             EditorGUILayout.LabelField("脚本名字2：", _createFile.PanelFileName, _fileStyle);
             EditorGUILayout.Space(10);
-            EditorGUILayout.LabelField("代码生成路径3：", _createFile.PanelNameCodeGeneratePath, _fileStyle);
+            DrawPathSelection("代码生成路径3：", _createFile.PanelNameCodeGeneratePath, p => _createFile.PanelNameCodeGeneratePath = p);
+            //EditorGUILayout.LabelField("代码生成路径3：", _createFile.PanelNameCodeGeneratePath, _fileStyle);
             EditorGUILayout.LabelField("脚本名字3：", _createFile.StaticCSFileName, _fileStyle);
         }
 
@@ -214,7 +229,7 @@ public class GameUIEditor : Editor
             EditorGUILayout.HelpBox("📦 当前预制体名称以 Cell/Item 结尾，将生成继承 MonoBehaviour 的脚本，并在 #region 区域内自动维护字段。", MessageType.Info);
         }
 
-        GUILayout.EndVertical();
+        EditorGUILayout.EndVertical();
         
         // 批量操作按钮区域
         EditorGUILayout.Space(10);
@@ -508,6 +523,7 @@ public class GameUIEditor : Editor
             }
             else
             {
+                SavePaths(_createFile);
                 _createFile.StartGenerate(anewFile);
                 AssetDatabase.Refresh();
             }
@@ -925,6 +941,84 @@ public class GameUIEditor : Editor
         }
         
         GUILayout.EndHorizontal(); //1
+    }
+    
+    private void DrawPathSelection(string label, string currentPath, Action<string> onPathChanged)
+    {
+        EditorGUILayout.BeginHorizontal();
+        EditorGUILayout.LabelField(label, GUILayout.Width(120));
+        
+        // 使用 TextField 允许手动修改
+        string newPath = EditorGUILayout.TextField(currentPath);
+        if (newPath != currentPath)
+        {
+            onPathChanged(newPath);
+        }
+
+        if (GUILayout.Button("选择", GUILayout.Width(50)))
+        {
+            string folder = "";
+            if (!string.IsNullOrEmpty(currentPath) && System.IO.Directory.Exists(currentPath))
+            {
+                folder = currentPath;
+            }
+            else
+            {
+                folder = Application.dataPath;
+            }
+            
+            // 使用 delayCall 避免 Layout 报错
+            EditorApplication.delayCall += () =>
+            {
+                string selectedPath = EditorUtility.OpenFolderPanel("选择生成路径", folder, "");
+                if (!string.IsNullOrEmpty(selectedPath))
+                {
+                    // 确保以 / 结尾
+                    string finalPath = selectedPath.Replace("\\", "/") + "/";
+                    onPathChanged(finalPath);
+                    // 强制重新绘制以显示新路径
+                    Repaint();
+                }
+            };
+        }
+        EditorGUILayout.EndHorizontal();
+    }
+
+    private static void LoadSavedPaths(GameUICreateFile createFile)
+    {
+        if (createFile == null) return;
+        
+        if (createFile.IsItemPrefab)
+        {
+            string savedPath = EditorPrefs.GetString(GlobalItemPathKey, "");
+            if (!string.IsNullOrEmpty(savedPath)) createFile.ComponentCodeGeneratePath = savedPath;
+        }
+        else
+        {
+            string p1 = EditorPrefs.GetString(GlobalComponentPathKey, "");
+            string p2 = EditorPrefs.GetString(GlobalPanelPathKey, "");
+            string p3 = EditorPrefs.GetString(GlobalPanelNamePathKey, "");
+            
+            if (!string.IsNullOrEmpty(p1)) createFile.ComponentCodeGeneratePath = p1;
+            if (!string.IsNullOrEmpty(p2)) createFile.PanelCodeGeneratePath = p2;
+            if (!string.IsNullOrEmpty(p3)) createFile.PanelNameCodeGeneratePath = p3;
+        }
+    }
+
+    private void SavePaths(GameUICreateFile createFile)
+    {
+        if (createFile == null) return;
+
+        if (createFile.IsItemPrefab)
+        {
+            EditorPrefs.SetString(GlobalItemPathKey, createFile.ComponentCodeGeneratePath);
+        }
+        else
+        {
+            EditorPrefs.SetString(GlobalComponentPathKey, createFile.ComponentCodeGeneratePath);
+            EditorPrefs.SetString(GlobalPanelPathKey, createFile.PanelCodeGeneratePath);
+            EditorPrefs.SetString(GlobalPanelNamePathKey, createFile.PanelNameCodeGeneratePath);
+        }
     }
     
 }
