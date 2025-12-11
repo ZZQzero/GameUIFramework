@@ -4,7 +4,6 @@ using UnityEngine.UI;
 
 namespace GameUI
 {
-    [RequireComponent(typeof(UnityEngine.UI.LoopScrollRectMulti))]
     [DisallowMultipleComponent]
     public abstract class GameUILoopScrollMultiBase : GameUIBase,LoopScrollPrefabSource, LoopScrollMultiDataSource
     {
