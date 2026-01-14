@@ -745,7 +745,7 @@ namespace UnityEngine.UI
                     size = GetSize(m_Content.GetChild(totalChildCount - idx - 1) as RectTransform);
                 }
             }
-            int item = itemTypeEnd - idx;
+            int item = itemTypeEnd - 1 - idx;
             if (totalCount >= 0 && idx > 0 && item % contentConstraintCount != 0)
             {
                 item = (item / contentConstraintCount) * contentConstraintCount;
@@ -812,39 +812,38 @@ namespace UnityEngine.UI
             int TargetLine = (index / contentConstraintCount);
             int CurrentLine = (currentFirst / contentConstraintCount);
 
-            if (TargetLine == CurrentLine)
+            if (sizeHelper != null)
             {
-                dist = -currentOffset;
+                int delta = reverseDirection ? 1 : 0;
+                if (TargetLine > CurrentLine)
+                    dist = sizeHelper.GetItemsSize(currentFirst + delta, index + delta) + contentSpacing * (TargetLine - CurrentLine);
+                else if (TargetLine < CurrentLine)
+                    dist = -sizeHelper.GetItemsSize(index + delta, currentFirst + delta) + contentSpacing * (TargetLine - CurrentLine);
             }
             else
             {
-                if (sizeHelper != null)
-                {
-                    dist = GetDimension(sizeHelper.GetItemsSize(currentFirst) - sizeHelper.GetItemsSize(index)) + contentSpacing * (CurrentLine - TargetLine);
-                    dist -= currentOffset;
-                }
-                else
-                {
-                    float elementSize = EstimiateElementSize();
-                    dist = elementSize * (CurrentLine - TargetLine) + contentSpacing * (CurrentLine - TargetLine);
-                    dist -= currentOffset;
-                }
+                float elementSize = EstimiateElementSize();
+                dist = elementSize * (TargetLine - CurrentLine) + contentSpacing * (TargetLine - CurrentLine);
             }
-            dist += offset;
+            dist += reverseDirection ? currentOffset : -currentOffset;
             if (mode == ScrollMode.ToCenter)
             {
+                float elementSize = 0;
                 float sizeToFill = GetAbsDimension(viewRect.rect.size);
                 if (sizeHelper != null)
                 {
-                    sizeToFill -= GetDimension(sizeHelper.GetItemsSize(index));
+                    elementSize = sizeHelper.GetItemsSize(index, index + 1);
                 }
                 else
                 {
-                    float elementSize = EstimiateElementSize();
-                    sizeToFill -= elementSize;
+                    elementSize = EstimiateElementSize();
                 }
-                dist += sizeToFill * 0.5f;
+                float centerOffset = (sizeToFill - elementSize) * 0.5f;
+                dist += reverseDirection ? centerOffset : -centerOffset;
             }
+            if (direction == LoopScrollRectDirection.Horizontal)
+                dist = -dist;
+            dist += offset;
             StartCoroutine(ScrollToCellCoroutine(index, Mathf.Abs(dist) / time, offset, mode));
         }
 
@@ -939,7 +938,8 @@ namespace UnityEngine.UI
                             }
                         }
 
-                        float maxMove = Time.deltaTime * speed;
+                        // issue #212: speed maybe zero when target is close enough
+                        float maxMove = Mathf.Max(Time.deltaTime * speed, 0.001f);
                         if (Mathf.Abs(delta) < maxMove)
                         {
                             needMoving = false;
@@ -1041,7 +1041,7 @@ namespace UnityEngine.UI
             }
             float sizeFilledAtStart = sizeFilled;
             
-            // refill from start in case not full yet
+            // refill from end in case not full yet
             while (sizeToFill > sizeFilled)
             {
                 float size = NewItemAtEnd();
@@ -1069,7 +1069,8 @@ namespace UnityEngine.UI
             // force build bounds here so scrollbar can access newest bounds
             LayoutRebuilder.ForceRebuildLayoutImmediate(m_Content);
             Canvas.ForceUpdateCanvases();
-            UpdateBounds(false);
+            // issue #214: content padding may leave fillable space
+            UpdateBounds(true);
             UpdateScrollbars(Vector2.zero);
             StopMovement();
             UpdatePrevData();
@@ -1140,7 +1141,8 @@ namespace UnityEngine.UI
             // force build bounds here so scrollbar can access newest bounds
             LayoutRebuilder.ForceRebuildLayoutImmediate(m_Content);
             Canvas.ForceUpdateCanvases();
-            UpdateBounds(false);
+            // issue #214: content padding may leave fillable space
+            UpdateBounds(true);
             UpdateScrollbars(Vector2.zero);
             StopMovement();
             UpdatePrevData();
@@ -1735,8 +1737,8 @@ namespace UnityEngine.UI
             float paddingSize = m_ContentLeftPadding + m_ContentRightPadding;
             if (sizeHelper != null)
             {
-                totalSize = sizeHelper.GetItemsSize(TotalLines).x + contentSpacing * (TotalLines - 1) + paddingSize;
-                offset = m_ContentBounds.min.x - sizeHelper.GetItemsSize(StartLine).x - contentSpacing * StartLine;
+                totalSize = sizeHelper.GetItemsSize(0, TotalLines) + contentSpacing * (TotalLines - 1) + paddingSize;
+                offset = m_ContentBounds.min.x - sizeHelper.GetItemsSize(0, StartLine) - contentSpacing * StartLine;
             }
             else
             {
@@ -1751,8 +1753,8 @@ namespace UnityEngine.UI
             float paddingSize = m_ContentTopPadding + m_ContentBottomPadding;
             if (sizeHelper != null)
             {
-                totalSize = sizeHelper.GetItemsSize(TotalLines).y + contentSpacing * (TotalLines - 1) + paddingSize;
-                offset = m_ContentBounds.max.y + sizeHelper.GetItemsSize(StartLine).y + contentSpacing * StartLine;
+                totalSize = sizeHelper.GetItemsSize(0, TotalLines) + contentSpacing * (TotalLines - 1) + paddingSize;
+                offset = m_ContentBounds.max.y + sizeHelper.GetItemsSize(0, StartLine) + contentSpacing * StartLine;
             }
             else
             {

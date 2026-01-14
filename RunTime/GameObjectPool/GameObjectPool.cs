@@ -13,7 +13,7 @@ namespace GameUI
         Normal = 0,
         Role,
         UI,
-        
+        Effect,
         Max // 不能超过Max
     }
     
